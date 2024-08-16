@@ -12,7 +12,7 @@ namespace ADUserGroupManager
         public Form1()
         {
             InitializeComponent();
-            adManager = new ActiveDirectoryManager();
+            adManager = new ActiveDirectoryManager(UpdateInterface);
             domainName = Properties.Settings.Default.DomainController;
             baseDN = Properties.Settings.Default.BaseDN;
         }
@@ -29,20 +29,44 @@ namespace ADUserGroupManager
             }
         }
 
+        private void UpdateInterface(string message)
+        {
+            // Filtra los mensajes que se muestran en txtSummary
+            if (message.StartsWith("Created user:"))
+            {
+                // Verifica si ya existe un mensaje similar para evitar duplicados
+                string lowercaseMessage = message.ToLower();
+                if (!txtSummary.Text.ToLower().Contains(lowercaseMessage))
+                {
+                    txtSummary.AppendText(message + Environment.NewLine);
+                }
+            }
+        }
+
+
 
         private void btnDoAll_Click(object sender, EventArgs e)
         {
             try
             {
+                progressBar.Visible = true;
+                this.Cursor = Cursors.WaitCursor;
+
+                btnDoAll.Enabled = false;
+                btnMoveServer.Enabled = false;
+                btnCreateGroup.Enabled = false;
+                btnCreateUsers.Enabled = false;
+                btnCreateOU.Enabled = false;
+
                 string clientName = txtClientName.Text;
                 string serverName = txtServerName.Text;
                 int userCount = int.Parse(txtUserCount.Text);
 
-                // First, create the OUs
+                // Create the OUs
                 adManager.CreateOU($"PROD_{serverName}", "Clinic");
                 adManager.CreateOU($"Cloud_{serverName}", "Servidores");
 
-                // Then, move the server to the correct OU
+                // Move the server to the correct OU
                 string ouServers = $"OU=Cloud_{serverName},OU=Servidores,{adManager.GetDomainBaseDN()}";
                 adManager.MoveComputer(serverName, ouServers);
 
@@ -52,21 +76,11 @@ namespace ADUserGroupManager
 
                 // Create users and add them to the group
                 string ouClinic = $"OU=PROD_{serverName},OU=Clinic,{adManager.GetDomainBaseDN()}";
+                string baseUserName = serverName.ToLower().Substring(0, serverName.Length - 2); // Extract the initials, e.g., 'hmo' from 'HMO01'
                 for (int i = 1; i <= userCount; i++)
                 {
-                    try
-                    {
-                        string baseUserName = serverName.Substring(0, serverName.Length - 2).ToUpper();
-                        string userName = $"{baseUserName}{i}";
-
-                        string password = adManager.GeneratePassword();
-                        adManager.CreateUserAndAddToGroup(userName, ouClinic, password, $"RDS_{serverName}", groupOU, i);
-                        txtSummary.AppendText($"Created user: {userName} with password: {password}\n");
-                    }
-                    catch (Exception ex)
-                    {
-                        adManager.LogAction($"Error creating user in iteration {i}: {ex.Message}");
-                    }
+                    string password = adManager.GeneratePassword();
+                    adManager.CreateUserAndAddToGroup(baseUserName, ouClinic, password, $"RDS_{serverName}", groupOU, i);
                 }
 
                 MessageBox.Show("All operations completed successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -76,8 +90,18 @@ namespace ADUserGroupManager
                 adManager.LogAction($"Error during operation: {ex.Message}");
                 MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-        }
+            finally
+            {
+                progressBar.Visible = false;
+                this.Cursor = Cursors.Default;
 
+                btnDoAll.Enabled = true;
+                btnMoveServer.Enabled = true;
+                btnCreateGroup.Enabled = true;
+                btnCreateUsers.Enabled = true;
+                btnCreateOU.Enabled = true;
+            }
+        }
 
 
 
@@ -126,9 +150,9 @@ namespace ADUserGroupManager
 
                 for (int i = 1; i <= userCount; i++)
                 {
+                    string userName = $"{serverName.ToLower()}{i}";
                     string password = adManager.GeneratePassword();
-                    adManager.CreateUserAndAddToGroup(serverName, ouClinic, password, $"RDS_{serverName}", groupOU, i);
-                    txtSummary.AppendText($"Created user: {serverName}{i} with password: {password}\n");
+                    adManager.CreateUserAndAddToGroup(userName, ouClinic, password, $"RDS_{serverName}", groupOU, i);
                 }
 
                 MessageBox.Show("Users created successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -139,8 +163,6 @@ namespace ADUserGroupManager
                 MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-
-
 
         private void btnCreateOU_Click(object sender, EventArgs e)
         {
@@ -199,5 +221,19 @@ namespace ADUserGroupManager
             }
         }
 
+        private void acercaDeToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AboutForm aboutForm = new AboutForm();
+            aboutForm.ShowDialog();
+        }
+
+        private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            // Crear y mostrar el formulario "Acerca de"
+            MessageBox.Show("Autor: Ezequiel Banega IA\nSoftware: Active Directory User Management\nDescripción: Este software es una herramienta de automatización para la creación de usuarios, grupos de OU y organización general, para uso interno exclusivo de PraxisEMR.",
+                            "Acerca de",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Information);
+        }
     }
 }

@@ -8,6 +8,12 @@ namespace ADUserGroupManager
     public class ActiveDirectoryManager
     {
         private string logFilePath = "ADUserGroupManagerLog.txt";
+        private readonly Action<string> _updateInterface;
+
+        public ActiveDirectoryManager(Action<string> updateInterface)
+        {
+            _updateInterface = updateInterface;
+        }
 
         public void LogAction(string message)
         {
@@ -15,11 +21,20 @@ namespace ADUserGroupManager
             {
                 writer.WriteLine($"{DateTime.Now}: {message}");
             }
+
+            // Update the interface with the log message
+            _updateInterface?.Invoke(message);
         }
 
         public string GetDomainBaseDN()
         {
             return Properties.Settings.Default.BaseDN;
+        }
+
+        public string GetFormattedDomainName()
+        {
+            string baseDN = GetDomainBaseDN();
+            return baseDN.Replace("DC=", "").Replace(",", ".");
         }
 
         public void TestConnection()
@@ -98,34 +113,63 @@ namespace ADUserGroupManager
             }
         }
 
-        public void CreateUserAndAddToGroup(string userName, string ouPath, string password, string groupName, string groupOU, int userIndex)
+        public void CreateUserAndAddToGroup(string baseUserName, string ouPath, string password, string groupName, string groupOU, int userIndex)
         {
             try
             {
-                EnsureOUExists(ouPath); // Asegura que la OU existe antes de crear el usuario
+                // Generate the user name with the correct format
+                string userName = $"{baseUserName.ToLower()}{userIndex}";
+                EnsureOUExists(ouPath);
 
                 using (DirectoryEntry ouEntry = new DirectoryEntry($"LDAP://{ouPath}"))
                 {
                     using (DirectoryEntry newUser = ouEntry.Children.Add($"CN={userName}", "user"))
                     {
                         newUser.Properties["sAMAccountName"].Value = userName;
-                        newUser.Properties["givenName"].Value = userName.Substring(0, userName.Length - 1); // Primer parte del nombre
-                        newUser.Properties["sn"].Value = userIndex.ToString(); // Número de usuario
+                        newUser.Properties["givenName"].Value = baseUserName.ToUpper(); // Initials (e.g., HMO)
+                        newUser.Properties["sn"].Value = userIndex.ToString(); // User number as surname
                         newUser.CommitChanges();
                         newUser.Invoke("SetPassword", new object[] { password });
-                        newUser.Properties["userAccountControl"].Value = 0x200; // Habilitar la cuenta
+                        newUser.Properties["userAccountControl"].Value = 0x200; // Enable the account
                         newUser.CommitChanges();
-                        LogAction($"User '{userName}' created successfully in OU '{ouPath}' with password '{password}'.");
 
-                        // Intentar agregar al grupo usando PowerShell
+                        string formattedUser = $"{GetFormattedDomainName()}\\{userName}";
+                        LogAction($"Created user: {formattedUser} with password: {password}");
+
                         AddUserToGroupUsingPowerShell(userName, groupName);
                     }
                 }
             }
             catch (Exception ex)
             {
-                LogAction($"Error creating user '{userName}': {ex.Message}");
-                throw new Exception($"Error occurred while creating user '{userName}'. Details: {ex.Message}");
+                LogAction($"Error creating user '{baseUserName}{userIndex}': {ex.Message}");
+                throw new Exception($"Error occurred while creating user '{baseUserName}{userIndex}'. Details: {ex.Message}");
+            }
+        }
+
+
+
+        public bool DoesUserExist(string userName)
+        {
+            try
+            {
+                using (DirectoryEntry entry = new DirectoryEntry($"LDAP://{GetDomainBaseDN()}"))
+                {
+                    using (DirectorySearcher searcher = new DirectorySearcher(entry))
+                    {
+                        searcher.Filter = $"(sAMAccountName={userName})";
+                        searcher.SearchScope = SearchScope.Subtree;
+                        searcher.SizeLimit = 1;
+
+                        SearchResult result = searcher.FindOne();
+                        return result != null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogAction($"Error checking if user exists: {ex.Message}");
+                throw;
             }
         }
 
@@ -133,7 +177,15 @@ namespace ADUserGroupManager
         {
             try
             {
-                string script = $"Add-ADGroupMember -Identity '{groupName}' -Members '{userName}'";
+                string domainName = GetFormattedDomainName();
+                string fullUserName = $"{domainName}\\{userName}";
+
+                string script = $@"
+                    $user = Get-ADUser -Identity '{userName}'
+                    $group = Get-ADGroup -Identity '{groupName}'
+                    Add-ADGroupMember -Identity $group -Members $user
+                ";
+
                 var psi = new ProcessStartInfo
                 {
                     FileName = "powershell.exe",
@@ -152,12 +204,12 @@ namespace ADUserGroupManager
 
                     if (process.ExitCode == 0)
                     {
-                        LogAction($"User '{userName}' added to group '{groupName}' using PowerShell.");
+                        LogAction($"User '{fullUserName}' added to group '{groupName}' using PowerShell.");
                     }
                     else
                     {
-                        LogAction($"Error using PowerShell to add user '{userName}' to group '{groupName}': {error}");
-                        throw new Exception($"Failed to add user '{userName}' to group '{groupName}' using PowerShell. Details: {error}");
+                        LogAction($"Error using PowerShell to add user '{fullUserName}' to group '{groupName}': {error}");
+                        throw new Exception($"Failed to add user '{fullUserName}' to group '{groupName}' using PowerShell. Details: {error}");
                     }
                 }
             }
@@ -188,20 +240,58 @@ namespace ADUserGroupManager
                 throw;
             }
         }
-
         public string GeneratePassword()
         {
-            string[] words = { "metal", "fruit", "horse", "pencil", "bus", "car", "fish", "bike", "city" };
+            // Lista extendida de palabras para generar contraseñas más únicas
+            string[] words = new string[]
+            {
+        "metal", "fruit", "horse", "pencil", "bus", "car", "fish", "bike", "city", "apple", "orange", "banana",
+        "grape", "cherry", "dog", "cat", "bird", "snake", "lion", "tiger", "elephant", "bear", "wolf", "shark",
+        "whale", "dolphin", "train", "plane", "ship", "rocket", "bicycle", "skateboard", "rollerblade", "carrot",
+        "broccoli", "potato", "tomato", "onion", "lettuce", "spinach", "cabbage", "pumpkin", "strawberry",
+        "raspberry", "blueberry", "blackberry", "kiwi", "pineapple", "mango", "peach", "plum", "coconut",
+        "avocado", "watermelon", "honeydew", "cantaloupe", "dragonfruit", "kiwifruit", "persimmon", "pomegranate",
+        "grapefruit", "lemon", "lime", "tangerine", "clementine", "mandarin", "cranberry", "fig", "date",
+        "apricot", "pear", "quince", "guava", "papaya", "passionfruit", "lychee", "rambutan", "durian",
+        "jackfruit", "breadfruit", "cherimoya", "sapodilla", "tamarind", "okra", "zucchini", "squash",
+        "eggplant", "radish", "turnip", "beet", "yam", "cassava", "sweetpotato", "parsnip", "rutabaga", "celery",
+        "fennel", "leek", "scallion", "shallot", "garlic", "ginger", "galangal", "turmeric", "basil", "oregano",
+        "rosemary", "thyme", "parsley", "cilantro", "dill", "sage", "chives", "marjoram", "tarragon", "bayleaf",
+        "mint", "spearmint", "peppermint", "lavender", "cinnamon", "nutmeg", "allspice", "clove", "cardamom",
+        "coriander", "cumin", "fennel", "mustard", "paprika", "saffron", "turmeric", "vanilla", "pepper",
+        "salt", "soy", "sauce", "vinegar", "sugar", "honey", "maple", "syrup", "molasses", "chocolate",
+        "cocoa", "caramel", "fudge", "marshmallow", "peanut", "butter", "jelly", "jam", "marmalade", "custard",
+        "pudding", "cream", "cheese", "butter", "yogurt", "milk", "cream", "sour", "cream", "whipped",
+        "cream", "ice", "cream", "gelato", "sorbet", "sherbet", "popsicle", "frozen", "yogurt", "sandwich",
+        "burger", "pizza", "hotdog", "fries", "nachos", "tacos", "burrito", "quesadilla", "enchilada", "fajitas",
+        "tostada", "tamale", "empanada", "chimichanga", "sopa", "pozole", "menudo", "tortilla", "guacamole",
+        "salsa", "chili", "beans", "rice", "pasta", "noodles", "ramen", "udon", "soba", "spaghetti", "macaroni",
+        "lasagna", "ravioli", "tortellini", "cannelloni", "gnocchi", "pizza", "calzone", "stromboli", "panini",
+        "ciabatta", "baguette", "croissant", "brioche", "pretzel", "muffin", "donut", "scone", "biscuit",
+        "cookie", "brownie", "cake", "pie", "tart", "eclair", "crepe", "waffle", "pancake", "blintz",
+        "dumpling", "potsticker", "wonton", "bao", "siu", "mai", "har", "gow", "char", "siu", "bun",
+        "bao", "baozi", "mantou", "sheng", "jian", "bao", "xiaolongbao", "jiaozi", "gyoza", "tempura",
+        "sashimi", "sushi", "nigiri", "maki", "temaki", "uramaki", "onigiri", "donburi", "chirashi",
+        "unagi", "tamago", "ikura", "uni", "maguro", "toro", "hamachi", "saba", "shiso", "daikon",
+        "wasabi", "nori", "miso", "tofu", "edamame", "sake", "mirin", "soy", "sauce", "ponzu", "teriyaki",
+        "yakitori", "tempura", "katsu", "tonkatsu", "ramen", "udon", "soba", "zaru", "yakisoba",
+        "okonomiyaki", "takoyaki", "onigiri", "tamago", "bento", "lunchbox", "soba", "gyudon", "oyakodon",
+        "katsudon", "sukiyaki", "shabu", "yakiniku", "karage", "katsu", "chashu", "shio", "miso",
+        "tonkotsu", "shoyu", "ramen", "yakitori", "gyoza", "onigiri", "tamago", "bento", "sushi",
+        "sashimi", "nigiri", "roll"
+            };
+
             Random random = new Random();
             string word1 = Capitalize(words[random.Next(words.Length)]);
             string word2 = Capitalize(words[random.Next(words.Length)]);
             string word3 = Capitalize(words[random.Next(words.Length)]);
-            string[] separators = { "*", "-", "." };
+            string[] separators = { "*", "-", ".", ";" };
             string separator1 = separators[random.Next(separators.Length)];
             string separator2 = separators[random.Next(separators.Length)];
 
             return $"{word1}{separator1}{word2}{separator2}{word3}";
         }
+
 
         private string Capitalize(string word)
         {
