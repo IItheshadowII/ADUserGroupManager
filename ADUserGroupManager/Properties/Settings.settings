@@ -1,0 +1,15 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="ADUserGroupManager.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="DomainController" Type="System.String" Scope="User">
+      <Value Profile="(Default)">dc01.praxisclouds.labs</Value>
+    </Setting>
+    <Setting Name="BaseDN" Type="System.String" Scope="User">
+      <Value Profile="(Default)">dc=praxisclouds,dc=labs</Value>
+    </Setting>
+    <Setting Name="DomainName" Type="System.String" Scope="User">
+      <Value Profile="(Default)">praxisclouds.labs</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>
