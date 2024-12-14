@@ -22,19 +22,14 @@ namespace ADUserGroupManager
                 writer.WriteLine($"{DateTime.Now}: {message}");
             }
 
-            // Update the interface with the log message
             _updateInterface?.Invoke(message);
         }
 
         public string GetDomainBaseDN()
         {
-            return Properties.Settings.Default.BaseDN;
-        }
+            string baseDN = Properties.Settings.Default.BaseDN;
+            return baseDN.Replace("dc01.", "").Replace("dc02.", "").ToLower();
 
-        public string GetFormattedDomainName()
-        {
-            string baseDN = GetDomainBaseDN();
-            return baseDN.Replace("DC=", "").Replace(",", ".");
         }
 
         public void TestConnection()
@@ -57,84 +52,79 @@ namespace ADUserGroupManager
             }
         }
 
-        public void MoveComputer(string computerName, string targetOU)
+        private string GetFormattedDomainName()
         {
-            try
+            string baseDN = GetDomainBaseDN();
+            string domain = baseDN.Replace("DC=", "").Replace(",", ".");
+
+            if (domain.StartsWith("dc01."))
             {
-                string computerDN = $"CN={computerName},CN=Computers,{GetDomainBaseDN()}";
-                LogAction($"Attempting to move computer '{computerName}' with DN '{computerDN}' to target OU '{targetOU}'.");
-
-                using (DirectoryEntry computerEntry = new DirectoryEntry($"LDAP://{computerDN}"))
-                {
-                    if (computerEntry.Guid == Guid.Empty)
-                    {
-                        LogAction($"Error: Computer '{computerName}' not found at '{computerDN}'.");
-                        throw new Exception($"Computer '{computerName}' not found at '{computerDN}'.");
-                    }
-
-                    var testAccess = computerEntry.Properties["distinguishedName"].Value;
-                    LogAction($"Access to computer '{computerName}' confirmed with distinguishedName '{testAccess}'.");
-
-                    using (DirectoryEntry targetEntry = new DirectoryEntry($"LDAP://{targetOU}"))
-                    {
-                        computerEntry.MoveTo(targetEntry);
-                        computerEntry.CommitChanges();
-                        LogAction($"Successfully moved computer '{computerName}' to '{targetOU}'.");
-                    }
-                }
+                domain = domain.Substring(5);
             }
-            catch (Exception ex)
-            {
-                LogAction($"Error moving computer: {ex.Message}");
-                throw;
-            }
+
+            return domain;
         }
 
-        public void CreateGroup(string groupName, string groupOU)
+        public void CreateUserAndAddToGroup(string userName, string ouPath, string password, string groupName, string groupOU, int userIndex, string clientName)
         {
             try
             {
-                EnsureOUExists(groupOU);
+                LogAction("Attempting to create user.");
 
-                using (DirectoryEntry entry = new DirectoryEntry($"LDAP://{groupOU}"))
-                {
-                    using (DirectoryEntry newGroup = entry.Children.Add($"CN={groupName}", "group"))
-                    {
-                        newGroup.Properties["sAMAccountName"].Value = groupName;
-                        newGroup.CommitChanges();
-                        LogAction($"Group '{groupName}' created successfully in OU '{groupOU}'.");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                LogAction($"Error creating group: {ex.Message}");
-                throw;
-            }
-        }
-
-        public void CreateUserAndAddToGroup(string baseUserName, string ouPath, string password, string groupName, string groupOU, int userIndex)
-        {
-            try
-            {
-                // Generate the user name with the correct format
-                string userName = $"{baseUserName.ToLower()}{userIndex}";
+                userName = userName.ToLower();
                 EnsureOUExists(ouPath);
 
                 using (DirectoryEntry ouEntry = new DirectoryEntry($"LDAP://{ouPath}"))
                 {
                     using (DirectoryEntry newUser = ouEntry.Children.Add($"CN={userName}", "user"))
                     {
+                        string firstName = userName.ToUpper();
+                        string lastName = userIndex.ToString();
+                        string displayName = $"{firstName} {lastName}";
+
+                        LogAction($"Assigning sAMAccountName: {userName}");
                         newUser.Properties["sAMAccountName"].Value = userName;
-                        newUser.Properties["givenName"].Value = baseUserName.ToUpper(); // Initials (e.g., HMO)
-                        newUser.Properties["sn"].Value = userIndex.ToString(); // User number as surname
-                        newUser.CommitChanges();
-                        newUser.Invoke("SetPassword", new object[] { password });
-                        newUser.Properties["userAccountControl"].Value = 0x200; // Enable the account
+
+                        LogAction($"Assigning givenName: {firstName}");
+                        newUser.Properties["givenName"].Value = firstName;
+
+                        LogAction($"Assigning sn: {lastName}");
+                        newUser.Properties["sn"].Value = lastName;
+
+                        LogAction($"Assigning displayName: {displayName}");
+                        newUser.Properties["displayName"].Value = displayName;
+
+                        if (!string.IsNullOrEmpty(clientName))
+                        {
+                            LogAction($"Assigning description: {clientName}");
+                            newUser.Properties["description"].Value = clientName;
+                        }
+
+                        // Comentar esta línea para probar si es la causa del problema
+                        // string loggedInUser = Environment.UserDomainName + "\\" + Environment.UserName;
+                        // LogAction($"Assigning info: {loggedInUser}");
+                        // newUser.Properties["info"].Value = loggedInUser;
+
+                        string domain = GetFormattedDomainName();
+                        string emailDomain = domain.Replace("dc=", "").Replace(",", ".");
+                        LogAction($"Assigning userPrincipalName: {userName}@{emailDomain}");
+                        newUser.Properties["userPrincipalName"].Value = $"{userName}@{emailDomain}";
+
                         newUser.CommitChanges();
 
-                        string formattedUser = $"{GetFormattedDomainName()}\\{userName}";
-                        LogAction($"Created user: {formattedUser} with password: {password}");
+                        LogAction($"Setting password for user: {userName}");
+                        newUser.Invoke("SetPassword", new object[] { password });
+
+                        LogAction($"Enabling account for user: {userName}");
+                        newUser.Properties["userAccountControl"].Value = 0x200;  // Configura como usuario normal habilitado.
+                        newUser.Properties["pwdLastSet"].Value = 0;
+                        newUser.CommitChanges();
+
+                        LogAction($"Disabling password change requirement for user: {userName}");
+                        newUser.Properties["userAccountControl"].Value = 0x0200 | 0x10000;
+                        newUser.CommitChanges();
+
+                        LogAction("User created successfully.");
 
                         AddUserToGroupUsingPowerShell(userName, groupName);
                     }
@@ -142,43 +132,21 @@ namespace ADUserGroupManager
             }
             catch (Exception ex)
             {
-                LogAction($"Error creating user '{baseUserName}{userIndex}': {ex.Message}");
-                throw new Exception($"Error occurred while creating user '{baseUserName}{userIndex}'. Details: {ex.Message}");
+                LogAction($"Error creating user: {ex.Message}");
+                throw new Exception($"Error occurred while creating user. Details: {ex.Message}");
             }
         }
 
 
 
-        public bool DoesUserExist(string userName)
-        {
-            try
-            {
-                using (DirectoryEntry entry = new DirectoryEntry($"LDAP://{GetDomainBaseDN()}"))
-                {
-                    using (DirectorySearcher searcher = new DirectorySearcher(entry))
-                    {
-                        searcher.Filter = $"(sAMAccountName={userName})";
-                        searcher.SearchScope = SearchScope.Subtree;
-                        searcher.SizeLimit = 1;
 
-                        SearchResult result = searcher.FindOne();
-                        return result != null;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                LogAction($"Error checking if user exists: {ex.Message}");
-                throw;
-            }
-        }
+
 
         private void AddUserToGroupUsingPowerShell(string userName, string groupName)
         {
             try
             {
-                string domainName = GetFormattedDomainName();
-                string fullUserName = $"{domainName}\\{userName}";
+                LogAction("Attempting to add user to group using PowerShell.");
 
                 string script = $@"
                     $user = Get-ADUser -Identity '{userName}'
@@ -198,109 +166,177 @@ namespace ADUserGroupManager
 
                 using (var process = Process.Start(psi))
                 {
-                    string output = process.StandardOutput.ReadToEnd();
-                    string error = process.StandardError.ReadToEnd();
                     process.WaitForExit();
 
                     if (process.ExitCode == 0)
                     {
-                        LogAction($"User '{fullUserName}' added to group '{groupName}' using PowerShell.");
+                        LogAction("User added to group successfully.");
                     }
                     else
                     {
-                        LogAction($"Error using PowerShell to add user '{fullUserName}' to group '{groupName}': {error}");
-                        throw new Exception($"Failed to add user '{fullUserName}' to group '{groupName}' using PowerShell. Details: {error}");
+                        string error = process.StandardError.ReadToEnd();
+                        LogAction($"Error using PowerShell to add user to group: {error}");
+                        throw new Exception($"Failed to add user to group using PowerShell. Details: {error}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                LogAction($"Error using PowerShell to add user to group '{groupName}': {ex.Message}");
+                LogAction($"Error using PowerShell to add user to group: {ex.Message}");
                 throw;
             }
         }
 
-        public void CreateOU(string ouName, string parentOU)
+        public void MoveComputer(string computerName, string targetOU)
         {
             try
             {
-                string parentOUPath = $"OU={parentOU},{GetDomainBaseDN()}";
-                LogAction($"Attempting to create or verify OU '{ouName}' in parent OU '{parentOU}'.");
+                LogAction("Attempting to move computer.");
 
-                EnsureOUExists(parentOUPath);
+                using (DirectoryEntry computerEntry = new DirectoryEntry($"LDAP://CN={computerName},CN=Computers,{GetDomainBaseDN()}"))
+                {
+                    if (computerEntry.Guid == Guid.Empty)
+                    {
+                        throw new Exception("El equipo no se encuentra en la OU 'Computers'. Por favor, sube primero el equipo al dominio.");
+                    }
 
-                string ouPath = $"OU={ouName},{parentOUPath}";
-                EnsureOUExists(ouPath);
-
-                LogAction($"OU '{ouName}' in parent OU '{parentOU}' confirmed or created successfully.");
+                    using (DirectoryEntry targetEntry = new DirectoryEntry($"LDAP://{targetOU}"))
+                    {
+                        computerEntry.MoveTo(targetEntry);
+                        computerEntry.CommitChanges();
+                        LogAction("Computer moved successfully.");
+                    }
+                }
             }
             catch (Exception ex)
             {
-                LogAction($"Error creating OU '{ouName}' in parent OU '{parentOU}': {ex.Message}");
+                if (ex.Message.Contains("no se encuentra en la OU 'Computers'"))
+                {
+                    LogAction("Error: El equipo no se encuentra en la OU 'Computers'. Por favor, sube primero el equipo al dominio.");
+                }
+                else
+                {
+                    LogAction($"Error moving computer: {ex.Message}");
+                }
                 throw;
             }
         }
-        public string GeneratePassword()
+
+        public void CreateGroup(string groupName, string groupOU)
         {
-            // Lista extendida de palabras para generar contraseñas más únicas
-            string[] words = new string[]
+            try
             {
-        "metal", "fruit", "horse", "pencil", "bus", "car", "fish", "bike", "city", "apple", "orange", "banana",
-        "grape", "cherry", "dog", "cat", "bird", "snake", "lion", "tiger", "elephant", "bear", "wolf", "shark",
-        "whale", "dolphin", "train", "plane", "ship", "rocket", "bicycle", "skateboard", "rollerblade", "carrot",
-        "broccoli", "potato", "tomato", "onion", "lettuce", "spinach", "cabbage", "pumpkin", "strawberry",
-        "raspberry", "blueberry", "blackberry", "kiwi", "pineapple", "mango", "peach", "plum", "coconut",
-        "avocado", "watermelon", "honeydew", "cantaloupe", "dragonfruit", "kiwifruit", "persimmon", "pomegranate",
-        "grapefruit", "lemon", "lime", "tangerine", "clementine", "mandarin", "cranberry", "fig", "date",
-        "apricot", "pear", "quince", "guava", "papaya", "passionfruit", "lychee", "rambutan", "durian",
-        "jackfruit", "breadfruit", "cherimoya", "sapodilla", "tamarind", "okra", "zucchini", "squash",
-        "eggplant", "radish", "turnip", "beet", "yam", "cassava", "sweetpotato", "parsnip", "rutabaga", "celery",
-        "fennel", "leek", "scallion", "shallot", "garlic", "ginger", "galangal", "turmeric", "basil", "oregano",
-        "rosemary", "thyme", "parsley", "cilantro", "dill", "sage", "chives", "marjoram", "tarragon", "bayleaf",
-        "mint", "spearmint", "peppermint", "lavender", "cinnamon", "nutmeg", "allspice", "clove", "cardamom",
-        "coriander", "cumin", "fennel", "mustard", "paprika", "saffron", "turmeric", "vanilla", "pepper",
-        "salt", "soy", "sauce", "vinegar", "sugar", "honey", "maple", "syrup", "molasses", "chocolate",
-        "cocoa", "caramel", "fudge", "marshmallow", "peanut", "butter", "jelly", "jam", "marmalade", "custard",
-        "pudding", "cream", "cheese", "butter", "yogurt", "milk", "cream", "sour", "cream", "whipped",
-        "cream", "ice", "cream", "gelato", "sorbet", "sherbet", "popsicle", "frozen", "yogurt", "sandwich",
-        "burger", "pizza", "hotdog", "fries", "nachos", "tacos", "burrito", "quesadilla", "enchilada", "fajitas",
-        "tostada", "tamale", "empanada", "chimichanga", "sopa", "pozole", "menudo", "tortilla", "guacamole",
-        "salsa", "chili", "beans", "rice", "pasta", "noodles", "ramen", "udon", "soba", "spaghetti", "macaroni",
-        "lasagna", "ravioli", "tortellini", "cannelloni", "gnocchi", "pizza", "calzone", "stromboli", "panini",
-        "ciabatta", "baguette", "croissant", "brioche", "pretzel", "muffin", "donut", "scone", "biscuit",
-        "cookie", "brownie", "cake", "pie", "tart", "eclair", "crepe", "waffle", "pancake", "blintz",
-        "dumpling", "potsticker", "wonton", "bao", "siu", "mai", "har", "gow", "char", "siu", "bun",
-        "bao", "baozi", "mantou", "sheng", "jian", "bao", "xiaolongbao", "jiaozi", "gyoza", "tempura",
-        "sashimi", "sushi", "nigiri", "maki", "temaki", "uramaki", "onigiri", "donburi", "chirashi",
-        "unagi", "tamago", "ikura", "uni", "maguro", "toro", "hamachi", "saba", "shiso", "daikon",
-        "wasabi", "nori", "miso", "tofu", "edamame", "sake", "mirin", "soy", "sauce", "ponzu", "teriyaki",
-        "yakitori", "tempura", "katsu", "tonkatsu", "ramen", "udon", "soba", "zaru", "yakisoba",
-        "okonomiyaki", "takoyaki", "onigiri", "tamago", "bento", "lunchbox", "soba", "gyudon", "oyakodon",
-        "katsudon", "sukiyaki", "shabu", "yakiniku", "karage", "katsu", "chashu", "shio", "miso",
-        "tonkotsu", "shoyu", "ramen", "yakitori", "gyoza", "onigiri", "tamago", "bento", "sushi",
-        "sashimi", "nigiri", "roll"
-            };
+                LogAction("Attempting to create group.");
 
-            Random random = new Random();
-            string word1 = Capitalize(words[random.Next(words.Length)]);
-            string word2 = Capitalize(words[random.Next(words.Length)]);
-            string word3 = Capitalize(words[random.Next(words.Length)]);
-            string[] separators = { "*", "-", ".", ";" };
-            string separator1 = separators[random.Next(separators.Length)];
-            string separator2 = separators[random.Next(separators.Length)];
+                EnsureOUExists(groupOU);
 
-            return $"{word1}{separator1}{word2}{separator2}{word3}";
+                using (DirectoryEntry entry = new DirectoryEntry($"LDAP://{groupOU}"))
+                {
+                    using (DirectoryEntry newGroup = entry.Children.Add($"CN={groupName}", "group"))
+                    {
+                        newGroup.Properties["sAMAccountName"].Value = groupName;
+                        newGroup.CommitChanges();
+                        LogAction("Group created successfully.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogAction($"Error creating group: {ex.Message}");
+                throw;
+            }
         }
 
-
-        private string Capitalize(string word)
+        public void CreateOU(string ouName, string parentOU, string description = "", bool protectFromDeletion = false)
         {
-            if (string.IsNullOrEmpty(word))
-                return word;
-            return char.ToUpper(word[0]) + word.Substring(1);
+            try
+            {
+                LogAction("Attempting to create or verify OU.");
+
+                string parentOUPath = $"OU={parentOU},{GetDomainBaseDN()}";
+                EnsureOUExists(parentOUPath);
+
+                string ouPath = $"OU={ouName},{parentOUPath}";
+                bool ouExists = EnsureOUExists(ouPath);
+
+                using (DirectoryEntry ouEntry = new DirectoryEntry($"LDAP://{ouPath}"))
+                {
+                    LogAction("Connected to OU entry.");
+
+                    if (!ouExists)
+                    {
+                        string createdBy = System.Security.Principal.WindowsIdentity.GetCurrent().Name;
+                        string fullDescription = $"{description} | Creado por: {createdBy}";
+
+                        ouEntry.Properties["description"].Value = fullDescription;
+                        LogAction($"Set description attribute to '{fullDescription}'");
+                    }
+
+                    ouEntry.CommitChanges();
+                    LogAction(ouExists ? "OU already exists and was not modified." : "OU created successfully.");
+                }
+
+                if (protectFromDeletion && !ouExists)
+                {
+                    LogAction("Attempting to apply protection via PowerShell.");
+                    ApplyDeletionProtectionWithPowerShell(ouName, parentOU);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogAction($"Error creating OU: {ex.Message}");
+                throw;
+            }
         }
 
-        private void EnsureOUExists(string ouDN)
+        private void ApplyDeletionProtectionWithPowerShell(string ouName, string parentOU)
+        {
+            try
+            {
+                string ouPath = $"OU={ouName},OU={parentOU},{GetDomainBaseDN()}";
+
+                LogAction($"Debug: OU Path constructed as {ouPath}");
+
+                string script = $@"
+            Import-Module ActiveDirectory
+            $ouPath = '{ouPath}'
+            Set-ADOrganizationalUnit -Identity $ouPath -ProtectedFromAccidentalDeletion $true
+        ";
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{script}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using (var process = Process.Start(psi))
+                {
+                    process.WaitForExit();
+
+                    if (process.ExitCode == 0)
+                    {
+                        LogAction("Protection applied successfully via PowerShell.");
+                    }
+                    else
+                    {
+                        string error = process.StandardError.ReadToEnd();
+                        LogAction($"Error using PowerShell to apply protection: {error}");
+                        throw new Exception($"Failed to apply protection via PowerShell. Details: {error}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogAction($"Error executing PowerShell script: {ex.Message}");
+                throw;
+            }
+        }
+
+        private bool EnsureOUExists(string ouDN)
         {
             try
             {
@@ -308,14 +344,14 @@ namespace ADUserGroupManager
                 {
                     if (entry.Guid != Guid.Empty)
                     {
-                        LogAction($"OU '{ouDN}' already exists.");
-                        return; // OU already exists
+                        LogAction("OU already exists.");
+                        return true;
                     }
                 }
             }
             catch (DirectoryServicesCOMException)
             {
-                LogAction($"OU '{ouDN}' does not exist. Attempting to create it.");
+                LogAction("OU does not exist. Attempting to create it.");
             }
 
             string[] ouParts = ouDN.Split(new[] { ',' }, 2);
@@ -329,15 +365,92 @@ namespace ADUserGroupManager
                     using (DirectoryEntry newOU = parentEntry.Children.Add($"OU={ouName}", "OrganizationalUnit"))
                     {
                         newOU.CommitChanges();
-                        LogAction($"OU '{ouDN}' created successfully.");
+                        LogAction("OU created successfully.");
+                    }
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                LogAction($"Error creating OU: {ex.Message}");
+                throw;
+            }
+        }
+
+        public int GetLastUserIndex(string ouPath, string baseUserName)
+        {
+            int maxIndex = 0;
+            try
+            {
+                using (DirectoryEntry ouEntry = new DirectoryEntry($"LDAP://{ouPath}"))
+                {
+                    foreach (DirectoryEntry child in ouEntry.Children)
+                    {
+                        if (child.SchemaClassName == "user")
+                        {
+                            string sAMAccountName = child.Properties["sAMAccountName"].Value.ToString();
+                            if (sAMAccountName.StartsWith(baseUserName))
+                            {
+                                if (int.TryParse(sAMAccountName.Substring(baseUserName.Length), out int index))
+                                {
+                                    if (index > maxIndex)
+                                    {
+                                        maxIndex = index;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                LogAction($"Error creating OU '{ouDN}': {ex.Message}");
-                throw;
+                LogAction($"Error retrieving last user index: {ex.Message}");
+                throw new Exception("Error retrieving last user index", ex);
             }
+
+            return maxIndex;
+        }
+
+        public string GeneratePassword()
+        {
+            string[] words = new string[]
+            {
+                "metal", "fruit", "horse", "pencil", "bus", "car", "fish", "bike", "city", "apple", "orange", "banana",
+                "pear", "grape", "peach", "plum", "kiwi", "lemon", "lime", "berry", "melon", "cherry", "strawberry",
+                "raspberry", "blueberry", "mango", "pineapple", "coconut", "papaya", "avocado", "broccoli", "carrot",
+                "cucumber", "lettuce", "pepper", "spinach", "tomato", "potato", "onion", "garlic", "ginger", "radish",
+                "pumpkin", "squash", "zucchini", "bean", "pea", "corn", "wheat", "oat", "barley", "rice", "quinoa",
+                "almond", "peanut", "walnut", "cashew", "pistachio", "hazelnut", "pecan", "macadamia", "chestnut",
+                "sashimi", "sushi", "nigiri", "roll", "tempura", "teriyaki", "yakitori", "udon", "ramen", "miso",
+                "tofu", "soy", "sauce", "vinegar", "mustard", "ketchup", "mayonnaise", "butter", "cheese", "cream",
+                "yogurt", "milk", "bread", "toast", "cereal", "bacon", "sausage", "ham", "turkey", "chicken", "beef",
+                "pork", "lamb", "fish", "shrimp", "lobster", "crab", "clam", "oyster", "mussel", "octopus", "squid",
+                "tuna", "salmon", "trout", "bass", "cod", "herring", "sardine", "anchovy", "mackerel", "shark",
+                "whale", "dolphin", "seal", "walrus", "penguin", "polar", "bear", "tiger", "lion", "leopard", "panther",
+                "jaguar", "cheetah", "elephant", "rhino", "hippo", "giraffe", "zebra", "kangaroo", "koala", "panda",
+                "monkey", "ape", "gorilla", "chimp", "baboon", "orangutan", "lemur", "sloth", "anteater", "armadillo",
+                "porcupine", "beaver", "otter", "seal", "wolf", "coyote", "fox", "deer", "moose", "elk", "caribou",
+                "bison", "buffalo", "horse", "donkey", "mule", "camel", "llama", "alpaca", "sheep", "goat", "cow",
+                "bull", "ox", "yak", "antelope", "gazelle"
+            };
+
+            Random random = new Random();
+            string word1 = Capitalize(words[random.Next(words.Length)]);
+            string word2 = Capitalize(words[random.Next(words.Length)]);
+            string word3 = Capitalize(words[random.Next(words.Length)]);
+            string[] separators = { "*", "-", ".", ";" };
+            string separator1 = separators[random.Next(separators.Length)];
+            string separator2 = separators[random.Next(separators.Length)];
+
+            return $"{word1}{separator1}{word2}{separator2}{word3}";
+        }
+
+        private string Capitalize(string word)
+        {
+            if (string.IsNullOrEmpty(word))
+                return word;
+            return char.ToUpper(word[0]) + word.Substring(1);
         }
     }
 }
