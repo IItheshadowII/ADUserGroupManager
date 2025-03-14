@@ -63,6 +63,26 @@ namespace ADUserGroupManager.Properties {
         /// <summary>
         ///   Busca un recurso adaptado de tipo System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap accesoIT {
+            get {
+                object obj = ResourceManager.GetObject("accesoIT", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Busca un recurso adaptado de tipo System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap accesoIT1 {
+            get {
+                object obj = ResourceManager.GetObject("accesoIT1", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Busca un recurso adaptado de tipo System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap praxis_emr_logo {
             get {
                 object obj = ResourceManager.GetObject("praxis_emr_logo", resourceCulture);

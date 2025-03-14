@@ -55,6 +55,7 @@ namespace ADUserGroupManager
             this.lblUserCount = new System.Windows.Forms.Label();
             this.txtUserCount = new System.Windows.Forms.TextBox();
             this.grpActions = new System.Windows.Forms.GroupBox();
+            this.chkResetAdminPassword = new System.Windows.Forms.CheckBox();
             this.chkSendEmail = new System.Windows.Forms.CheckBox();
             this.chkSendToGoogleSheets = new System.Windows.Forms.CheckBox();
             this.btnCreateUsers = new System.Windows.Forms.Button();
@@ -90,7 +91,7 @@ namespace ADUserGroupManager
             this.grpInputs.Controls.Add(this.lblUserCount);
             this.grpInputs.Controls.Add(this.txtUserCount);
             this.grpInputs.ForeColor = System.Drawing.Color.Black;
-            this.grpInputs.Location = new System.Drawing.Point(20, 80);
+            this.grpInputs.Location = new System.Drawing.Point(20, 116);
             this.grpInputs.Name = "grpInputs";
             this.grpInputs.Size = new System.Drawing.Size(760, 100);
             this.grpInputs.TabIndex = 2;
@@ -149,23 +150,34 @@ namespace ADUserGroupManager
             // grpActions
             // 
             this.grpActions.BackColor = System.Drawing.Color.White;
+            this.grpActions.Controls.Add(this.chkResetAdminPassword);
             this.grpActions.Controls.Add(this.chkSendEmail);
             this.grpActions.Controls.Add(this.chkSendToGoogleSheets);
             this.grpActions.Controls.Add(this.btnCreateUsers);
             this.grpActions.Controls.Add(this.btnDoAll);
             this.grpActions.ForeColor = System.Drawing.Color.Black;
-            this.grpActions.Location = new System.Drawing.Point(20, 190);
+            this.grpActions.Location = new System.Drawing.Point(20, 226);
             this.grpActions.Name = "grpActions";
-            this.grpActions.Size = new System.Drawing.Size(760, 80);
+            this.grpActions.Size = new System.Drawing.Size(760, 93);
             this.grpActions.TabIndex = 3;
             this.grpActions.TabStop = false;
             this.grpActions.Text = "Actions";
+            // 
+            // chkResetAdminPassword
+            // 
+            this.chkResetAdminPassword.AutoSize = true;
+            this.chkResetAdminPassword.Location = new System.Drawing.Point(20, 57);
+            this.chkResetAdminPassword.Name = "chkResetAdminPassword";
+            this.chkResetAdminPassword.Size = new System.Drawing.Size(146, 19);
+            this.chkResetAdminPassword.TabIndex = 4;
+            this.chkResetAdminPassword.Text = "Reset Admin Password";
+            this.chkResetAdminPassword.UseVisualStyleBackColor = true;
             // 
             // chkSendEmail
             // 
             this.chkSendEmail.AutoSize = true;
             this.chkSendEmail.BackColor = System.Drawing.Color.White;
-            this.chkSendEmail.Location = new System.Drawing.Point(20, 35);
+            this.chkSendEmail.Location = new System.Drawing.Point(20, 25);
             this.chkSendEmail.Name = "chkSendEmail";
             this.chkSendEmail.Size = new System.Drawing.Size(84, 19);
             this.chkSendEmail.TabIndex = 0;
@@ -177,7 +189,7 @@ namespace ADUserGroupManager
             this.chkSendToGoogleSheets.AutoSize = true;
             this.chkSendToGoogleSheets.BackColor = System.Drawing.Color.White;
             this.chkSendToGoogleSheets.FlatStyle = System.Windows.Forms.FlatStyle.System;
-            this.chkSendToGoogleSheets.Location = new System.Drawing.Point(120, 35);
+            this.chkSendToGoogleSheets.Location = new System.Drawing.Point(120, 25);
             this.chkSendToGoogleSheets.Name = "chkSendToGoogleSheets";
             this.chkSendToGoogleSheets.Size = new System.Drawing.Size(150, 20);
             this.chkSendToGoogleSheets.TabIndex = 1;
@@ -217,9 +229,9 @@ namespace ADUserGroupManager
             this.txtSummary.BackColor = System.Drawing.Color.White;
             this.txtSummary.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtSummary.ContextMenuStrip = this.contextMenuCopy;
-            this.txtSummary.Location = new System.Drawing.Point(20, 280);
+            this.txtSummary.Location = new System.Drawing.Point(20, 325);
             this.txtSummary.Name = "txtSummary";
-            this.txtSummary.Size = new System.Drawing.Size(760, 150);
+            this.txtSummary.Size = new System.Drawing.Size(760, 141);
             this.txtSummary.TabIndex = 4;
             this.txtSummary.Text = "";
             this.txtSummary.ContextMenuStripChanged += new System.EventHandler(this.copyToolStripMenuItem_Click);
@@ -240,7 +252,7 @@ namespace ADUserGroupManager
             // 
             // progressBar
             // 
-            this.progressBar.Location = new System.Drawing.Point(20, 440);
+            this.progressBar.Location = new System.Drawing.Point(20, 476);
             this.progressBar.Name = "progressBar";
             this.progressBar.Size = new System.Drawing.Size(760, 10);
             this.progressBar.TabIndex = 5;
@@ -269,14 +281,14 @@ namespace ADUserGroupManager
             // configureDomainToolStripMenuItem
             // 
             this.configureDomainToolStripMenuItem.Name = "configureDomainToolStripMenuItem";
-            this.configureDomainToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.configureDomainToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
             this.configureDomainToolStripMenuItem.Text = "Configure Domain";
             this.configureDomainToolStripMenuItem.Click += new System.EventHandler(this.configureDomainToolStripMenuItem_Click);
             // 
             // configureEmailToolStripMenuItem
             // 
             this.configureEmailToolStripMenuItem.Name = "configureEmailToolStripMenuItem";
-            this.configureEmailToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.configureEmailToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
             this.configureEmailToolStripMenuItem.Text = "Configure Email";
             this.configureEmailToolStripMenuItem.Click += new System.EventHandler(this.configureEmailToolStripMenuItem_Click);
             // 
@@ -286,21 +298,21 @@ namespace ADUserGroupManager
             this.cloudQueryToolStripMenuItem,
             this.userQueryToolStripMenuItem});
             this.querysToolStripMenuItem.Name = "querysToolStripMenuItem";
-            this.querysToolStripMenuItem.Size = new System.Drawing.Size(59, 20);
-            this.querysToolStripMenuItem.Text = "Queries";
+            this.querysToolStripMenuItem.Size = new System.Drawing.Size(77, 20);
+            this.querysToolStripMenuItem.Text = "Operations";
             // 
             // cloudQueryToolStripMenuItem
             // 
             this.cloudQueryToolStripMenuItem.Name = "cloudQueryToolStripMenuItem";
             this.cloudQueryToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.cloudQueryToolStripMenuItem.Text = "Cloud Query";
+            this.cloudQueryToolStripMenuItem.Text = "Clouds";
             this.cloudQueryToolStripMenuItem.Click += new System.EventHandler(this.cloudQueryToolStripMenuItem_Click);
             // 
             // userQueryToolStripMenuItem
             // 
             this.userQueryToolStripMenuItem.Name = "userQueryToolStripMenuItem";
             this.userQueryToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.userQueryToolStripMenuItem.Text = "User Query";
+            this.userQueryToolStripMenuItem.Text = "Users";
             this.userQueryToolStripMenuItem.Click += new System.EventHandler(this.userQueryToolStripMenuItem_Click);
             // 
             // helpToolStripMenuItem
@@ -320,17 +332,18 @@ namespace ADUserGroupManager
             // 
             // pictureBox1
             // 
-            this.pictureBox1.Image = global::ADUserGroupManager.Properties.Resources.praxis_emr_logo;
-            this.pictureBox1.Location = new System.Drawing.Point(272, 27);
+            this.pictureBox1.Image = global::ADUserGroupManager.Properties.Resources.accesoIT1;
+            this.pictureBox1.Location = new System.Drawing.Point(301, 27);
             this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(198, 50);
+            this.pictureBox1.Size = new System.Drawing.Size(180, 80);
+            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.AutoSize;
             this.pictureBox1.TabIndex = 7;
             this.pictureBox1.TabStop = false;
             // 
             // Form1
             // 
             this.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.ClientSize = new System.Drawing.Size(800, 500);
+            this.ClientSize = new System.Drawing.Size(800, 514);
             this.Controls.Add(this.pictureBox1);
             this.Controls.Add(this.grpInputs);
             this.Controls.Add(this.grpActions);
@@ -367,5 +380,6 @@ namespace ADUserGroupManager
         }
 
         private PictureBox pictureBox1;
+        private CheckBox chkResetAdminPassword;
     }
 }

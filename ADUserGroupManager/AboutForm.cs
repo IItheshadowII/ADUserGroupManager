@@ -20,7 +20,7 @@ namespace ADUserGroupManager
 
             Label lblInfo = new Label
             {
-                Text = "Autor: Ezequiel Banega IA\nSoftware: Active Directory User Management\nDescripción: Es un software de automatización para la creación de usuarios, OUs, grupos y organización en general para uso interno exclusivo de PraxisEMR.",
+                Text = "Autor: Ezequiel Banega IA\nSoftware: Active Directory User Management\nDescripción: Es un software de automatización para la creación de usuarios, OUs, grupos y organización en general para uso interno.",
                 AutoSize = true,
                 TextAlign = System.Drawing.ContentAlignment.MiddleCenter,
                 Dock = DockStyle.Fill

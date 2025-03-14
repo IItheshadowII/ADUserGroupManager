@@ -155,9 +155,15 @@ OU: {ouLocation}
                     Filter = $"(sAMAccountName={userName})"
                 };
 
+                // Desactiva el seguimiento de referencias
+                searcher.ReferralChasing = ReferralChasingOption.None;
+
+                adManager.LogAction($"Searching for user: {userName} with filter: (sAMAccountName={userName})");
+
                 SearchResult result = searcher.FindOne();
                 if (result != null)
                 {
+                    adManager.LogAction($"User {userName} found.");
                     return result.GetDirectoryEntry();
                 }
             }
@@ -276,6 +282,102 @@ OU: {ouLocation}
             catch (Exception ex)
             {
                 MessageBox.Show($"Error unlocking user: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private string lastResetPassword = string.Empty;
+        private string lastResetServer = string.Empty;
+        private Button btnSendPasswordEmail = null;
+
+        private void btnResetAdminPassword_Click(object sender, EventArgs e)
+        {
+            string serverName = txtUserName.Text.Trim();
+
+            if (string.IsNullOrEmpty(serverName))
+            {
+                MessageBox.Show("Por favor, ingrese un nombre de servidor válido.",
+                                "Error",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+                return;
+            }
+
+            // Confirmar antes de proceder
+            var confirmResult = MessageBox.Show(
+                $"¿Está seguro que desea restablecer la contraseña del administrador local para {serverName}?",
+                "Confirmar restablecimiento",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (confirmResult != DialogResult.Yes)
+            {
+                return;
+            }
+
+            try
+            {
+                this.Cursor = Cursors.WaitCursor;
+
+                // Crear una instancia de AdminPasswordManager y pasarle el método de log
+                var passwordManager = new AdminPasswordManager(adManager.LogAction);
+
+                // Llamar al método para restablecer la contraseña
+                string newPassword = passwordManager.ResetLocalAdminPassword(serverName);
+
+                // Mostrar la nueva contraseña al usuario
+                MessageBox.Show(
+                    $"La contraseña del administrador local para el servidor {serverName} ha sido restablecida exitosamente.\n\n" +
+                    $"Nueva contraseña: {newPassword}\n\n" +
+                    "Asegúrese de guardar esta contraseña en un lugar seguro.",
+                    "Operación exitosa",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                // Opcionalmente, copiar la contraseña al portapapeles
+                Clipboard.SetText(newPassword);
+
+                // También podríamos actualizar algún campo de texto en la interfaz
+                if (txtResult != null)
+                {
+                    txtResult.AppendText($"\r\nContraseña de administrador para {serverName}: {newPassword}\r\n");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"No se pudo restablecer la contraseña del administrador local:\n\n{ex.Message}",
+                    "Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                this.Cursor = Cursors.Default;
+            }
+        }
+
+        private void BtnSendPasswordEmail_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                string emailBody = $@"
+Reset de Contraseña de Administrador Local
+
+Servidor: {lastResetServer}
+Usuario: Administrator
+Nueva contraseña: {lastResetPassword}
+
+Esta es una contraseña generada automáticamente. Por favor, guárdela en un lugar seguro.
+";
+
+                EmailSender.SendEmail("Reset de Contraseña de Administrador Local", emailBody);
+                MessageBox.Show("Contraseña enviada por correo electrónico exitosamente.",
+                              "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al enviar correo electrónico: {ex.Message}",
+                              "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

@@ -2,6 +2,8 @@
 using System.DirectoryServices;
 using System.Diagnostics;
 using System.IO;
+using System.DirectoryServices.ActiveDirectory;
+using System.Linq;
 
 namespace ADUserGroupManager
 {
@@ -28,9 +30,27 @@ namespace ADUserGroupManager
         public string GetDomainBaseDN()
         {
             string baseDN = Properties.Settings.Default.BaseDN;
-            return baseDN.Replace("dc01.", "").Replace("dc02.", "").ToLower();
 
+            if (string.IsNullOrWhiteSpace(baseDN))
+            {
+                try
+                {
+                    Domain currentDomain = Domain.GetCurrentDomain();
+                    baseDN = string.Join(",", currentDomain.Name
+                        .Split('.')
+                        .Select(part => $"DC={part}"));
+                    LogAction($"Automatically detected domain: {baseDN}");
+                }
+                catch (Exception ex)
+                {
+                    LogAction($"Error detecting domain automatically: {ex.Message}");
+                    throw new Exception("Domain detection failed", ex);
+                }
+            }
+
+            return baseDN.Replace("dc01.", "").Replace("dc02.", "").ToLower();
         }
+
 
         public void TestConnection()
         {
@@ -139,7 +159,171 @@ namespace ADUserGroupManager
 
 
 
+        public void ResetLocalAdminPassword(string serverName, string newPassword)
+        {
+            try
+            {
+                LogAction($"Attempting to reset local admin password for {serverName} via PowerShell Remoting...");
 
+                // Script PowerShell que usa PowerShell Remoting
+                string script = @"
+param(
+    [string]$ComputerName,
+    [string]$NewPassword
+)
+
+try {
+    Write-Output ""Verificando conectividad con $ComputerName...""
+    if (Test-Connection -ComputerName $ComputerName -Count 2 -Quiet) {
+        Write-Output ""Servidor accesible por ping.""
+    } else {
+        Write-Error ""El servidor no responde al ping.""
+        exit 1
+    }
+    
+    # Intentar conexión usando PS Remoting directamente al comando local
+    $scriptBlock = {
+        param($pwd)
+        try {
+            $user = [ADSI]""WinNT://./Administrator,user""
+            $user.SetPassword($pwd)
+            $user.SetInfo()
+            ""Password changed successfully""
+        } catch {
+            ""Error changing password: $_""
+        }
+    }
+
+    # Establecer opciones para saltarse validaciones de certificado si es necesario
+    $sessionOption = New-PSSessionOption -SkipCACheck -SkipCNCheck -SkipRevocationCheck
+    
+    # Crear sesión remota
+    $session = New-PSSession -ComputerName $ComputerName -SessionOption $sessionOption -ErrorAction Stop
+    
+    # Ejecutar el script en la sesión remota
+    $result = Invoke-Command -Session $session -ScriptBlock $scriptBlock -ArgumentList $NewPassword
+    
+    # Cerrar la sesión
+    Remove-PSSession -Session $session
+    
+    Write-Output ""Resultado: $result""
+    exit 0
+}
+catch {
+    Write-Error ""Error durante el cambio de contraseña: $_""
+    exit 1
+}
+";
+                // Guardar el script en un archivo temporal
+                string tempScript = Path.GetTempFileName() + ".ps1";
+                File.WriteAllText(tempScript, script);
+
+                // Ejecutar PowerShell con elevación de privilegios
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{tempScript}\" -ComputerName \"{serverName}\" -NewPassword \"{newPassword}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using (var process = Process.Start(psi))
+                {
+                    process.WaitForExit();
+                    string output = process.StandardOutput.ReadToEnd();
+                    string error = process.StandardError.ReadToEnd();
+
+                    // Eliminar el archivo temporal
+                    try { File.Delete(tempScript); } catch { /* Ignorar errores al eliminar */ }
+
+                    if (process.ExitCode == 0 && !error.Contains("error"))
+                    {
+                        LogAction($"Local admin password reset successfully for {serverName}: {output}");
+                    }
+                    else
+                    {
+                        LogAction($"Error resetting local admin password: {error}");
+
+                        // Intentar con un método alternativo como último recurso
+                        TryAlternativePasswordReset(serverName, newPassword);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogAction($"Error resetting local admin password: {ex.Message}");
+                throw;
+            }
+        }
+
+        private void TryAlternativePasswordReset(string serverName, string newPassword)
+        {
+            try
+            {
+                LogAction($"Attempting alternative method for {serverName}...");
+
+                // Crear un archivo batch temporal con el comando para cambiar la contraseña
+                string batchFile = Path.GetTempFileName() + ".bat";
+                string cmdContent = $@"
+@echo off
+echo Attempting to change Administrator password on {serverName}...
+net use \\{serverName}\IPC$ /user:Administrator """" 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    echo Connection failed
+    exit /b 1
+)
+
+echo Connection successful, changing password...
+net user Administrator ""{newPassword}"" /y /domain:{serverName}
+if %ERRORLEVEL% EQU 0 (
+    echo Password changed successfully
+    exit /b 0
+) else (
+    echo Failed to change password
+    exit /b 2
+)
+";
+                File.WriteAllText(batchFile, cmdContent);
+
+                // Ejecutar el batch file
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c \"{batchFile}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using (var process = Process.Start(psi))
+                {
+                    process.WaitForExit();
+                    string output = process.StandardOutput.ReadToEnd();
+                    string error = process.StandardError.ReadToEnd();
+
+                    // Eliminar el archivo batch temporal
+                    try { File.Delete(batchFile); } catch { /* Ignorar errores al eliminar */ }
+
+                    if (process.ExitCode == 0)
+                    {
+                        LogAction($"Alternative method succeeded for {serverName}: {output}");
+                    }
+                    else
+                    {
+                        LogAction($"Alternative method failed for {serverName}: {output} {error}");
+                        throw new Exception($"Failed to reset password using all available methods.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogAction($"Error in alternative password reset method: {ex.Message}");
+                throw;
+            }
+        }
 
 
         private void AddUserToGroupUsingPowerShell(string userName, string groupName)

@@ -30,6 +30,7 @@
             this.btnDisableUser = new System.Windows.Forms.Button();
             this.btnEnableUser = new System.Windows.Forms.Button();
             this.btnUnlockUser = new System.Windows.Forms.Button();
+            this.btnResetAdminPassword = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // lblUserName
@@ -81,7 +82,7 @@
             this.btnDisableUser.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnDisableUser.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F);
             this.btnDisableUser.ForeColor = System.Drawing.Color.White;
-            this.btnDisableUser.Location = new System.Drawing.Point(15, 310);
+            this.btnDisableUser.Location = new System.Drawing.Point(65, 315);
             this.btnDisableUser.Name = "btnDisableUser";
             this.btnDisableUser.Size = new System.Drawing.Size(100, 30);
             this.btnDisableUser.TabIndex = 4;
@@ -96,7 +97,7 @@
             this.btnEnableUser.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnEnableUser.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F);
             this.btnEnableUser.ForeColor = System.Drawing.Color.White;
-            this.btnEnableUser.Location = new System.Drawing.Point(130, 310);
+            this.btnEnableUser.Location = new System.Drawing.Point(180, 315);
             this.btnEnableUser.Name = "btnEnableUser";
             this.btnEnableUser.Size = new System.Drawing.Size(100, 30);
             this.btnEnableUser.TabIndex = 5;
@@ -111,7 +112,7 @@
             this.btnUnlockUser.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnUnlockUser.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F);
             this.btnUnlockUser.ForeColor = System.Drawing.Color.White;
-            this.btnUnlockUser.Location = new System.Drawing.Point(245, 310);
+            this.btnUnlockUser.Location = new System.Drawing.Point(295, 315);
             this.btnUnlockUser.Name = "btnUnlockUser";
             this.btnUnlockUser.Size = new System.Drawing.Size(100, 30);
             this.btnUnlockUser.TabIndex = 6;
@@ -119,11 +120,22 @@
             this.btnUnlockUser.UseVisualStyleBackColor = false;
             this.btnUnlockUser.Click += new System.EventHandler(this.btnUnlockUser_Click);
             // 
+            // btnResetAdminPassword
+            // 
+            this.btnResetAdminPassword.Location = new System.Drawing.Point(170, 367);
+            this.btnResetAdminPassword.Name = "btnResetAdminPassword";
+            this.btnResetAdminPassword.Size = new System.Drawing.Size(122, 30);
+            this.btnResetAdminPassword.TabIndex = 7;
+            this.btnResetAdminPassword.Text = "ResetAdminPassword";
+            this.btnResetAdminPassword.UseVisualStyleBackColor = true;
+            this.btnResetAdminPassword.Click += new System.EventHandler(this.btnResetAdminPassword_Click);
+            // 
             // UserQueryForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(470, 360);
+            this.ClientSize = new System.Drawing.Size(470, 418);
+            this.Controls.Add(this.btnResetAdminPassword);
             this.Controls.Add(this.btnUnlockUser);
             this.Controls.Add(this.btnEnableUser);
             this.Controls.Add(this.btnDisableUser);
@@ -141,5 +153,7 @@
             this.PerformLayout();
 
         }
+
+        private System.Windows.Forms.Button btnResetAdminPassword;
     }
 }

@@ -21,7 +21,15 @@ namespace ADUserGroupManager
             try
             {
                 LogAction("Initializing Google Sheets service...");
-                using (var stream = new FileStream("credentials.json", FileMode.Open, FileAccess.Read))
+
+                // Obtener la ruta base del ejecutable
+                string basePath = AppDomain.CurrentDomain.BaseDirectory;
+                string credentialsPath = Path.Combine(basePath, "credentials.json");
+
+                if (!File.Exists(credentialsPath))
+                    throw new FileNotFoundException("El archivo 'credentials.json' no fue encontrado.", credentialsPath);
+
+                using (var stream = new FileStream(credentialsPath, FileMode.Open, FileAccess.Read))
                 {
                     var credential = GoogleCredential.FromStream(stream).CreateScoped(Scopes);
                     _service = new SheetsService(new BaseClientService.Initializer()
@@ -39,6 +47,9 @@ namespace ADUserGroupManager
             }
         }
 
+        /// <summary>
+        /// Crea una nueva hoja en el spreadsheet si no existe.
+        /// </summary>
         public static void CreateSheet(string spreadsheetId, string sheetName)
         {
             try
@@ -78,6 +89,9 @@ namespace ADUserGroupManager
             }
         }
 
+        /// <summary>
+        /// Actualiza una celda específica con el valor proporcionado.
+        /// </summary>
         public static void UpdateCell(string spreadsheetId, string cellRange, string value)
         {
             try
@@ -91,7 +105,6 @@ namespace ADUserGroupManager
                 {
                     LogAction($"Updating cell '{cellRange}' in spreadsheet '{spreadsheetId}' with value '{value}'...");
                 }
-
 
                 var valueRange = new ValueRange
                 {
@@ -110,6 +123,9 @@ namespace ADUserGroupManager
             }
         }
 
+        /// <summary>
+        /// Establece el formato en negrita para una celda específica.
+        /// </summary>
         public static void SetCellBold(string spreadsheetId, string sheetName, string cellAddress, bool bold)
         {
             int sheetId = GetSheetId(spreadsheetId, sheetName);
@@ -151,6 +167,9 @@ namespace ADUserGroupManager
             service.Spreadsheets.BatchUpdate(request, spreadsheetId).Execute();
         }
 
+        /// <summary>
+        /// Ajusta automáticamente el ancho de las columnas especificadas.
+        /// </summary>
         public static void AutoResizeColumns(string spreadsheetId, string sheetName, int startColumnIndex, int endColumnIndex)
         {
             int sheetId = GetSheetId(spreadsheetId, sheetName);
@@ -179,6 +198,9 @@ namespace ADUserGroupManager
             service.Spreadsheets.BatchUpdate(autoResizeRequest, spreadsheetId).Execute();
         }
 
+        /// <summary>
+        /// Obtiene el Sheet ID basado en el nombre de la hoja.
+        /// </summary>
         private static int GetSheetId(string spreadsheetId, string sheetName)
         {
             var spreadsheet = _service.Spreadsheets.Get(spreadsheetId).Execute();
@@ -189,11 +211,17 @@ namespace ADUserGroupManager
             return (int)sheet.Properties.SheetId.Value;
         }
 
+        /// <summary>
+        /// Retorna la instancia del SheetsService.
+        /// </summary>
         private static SheetsService GetSheetsService()
         {
             return _service;
         }
 
+        /// <summary>
+        /// Convierte una dirección de celda (ej. "B4") a índices de fila y columna.
+        /// </summary>
         private static (int Row, int Col) ConvertCellAddressToIndices(string cellAddress)
         {
             string columnPart = new string(cellAddress.TakeWhile(char.IsLetter).ToArray());
@@ -205,6 +233,9 @@ namespace ADUserGroupManager
             return (rowIndex, columnIndex);
         }
 
+        /// <summary>
+        /// Convierte letras de columna a número (A=1, B=2, ..., Z=26, AA=27, etc.).
+        /// </summary>
         private static int ColumnLetterToNumber(string column)
         {
             int sum = 0;
@@ -216,11 +247,14 @@ namespace ADUserGroupManager
             return sum;
         }
 
+        /// <summary>
+        /// Obtiene la última fila utilizada en una columna específica.
+        /// </summary>
         public static int GetLastUsedRow(string spreadsheetId, string sheetName, string column)
         {
             try
             {
-                string range = $"{sheetName}!{column}5:{column}";
+                string range = $"{sheetName}!{column}5:{column}1000";
                 var service = GetSheetsService();
 
                 var request = service.Spreadsheets.Values.Get(spreadsheetId, range);
@@ -236,6 +270,9 @@ namespace ADUserGroupManager
             }
         }
 
+        /// <summary>
+        /// Registra acciones y errores en un archivo de log.
+        /// </summary>
         private static void LogAction(string message)
         {
             try
@@ -246,7 +283,6 @@ namespace ADUserGroupManager
                     message = message.Replace("with value", "(Password hidden)");
                 }
 
-
                 using (StreamWriter writer = new StreamWriter(LogFilePath, true))
                 {
                     writer.WriteLine($"{DateTime.Now}: {message}");
@@ -255,6 +291,36 @@ namespace ADUserGroupManager
             catch
             {
                 // Ignorar errores de logging
+            }
+        }
+
+        /// <summary>
+        /// Obtiene los valores de un rango específico en una hoja de cálculo.
+        /// </summary>
+        public static IList<IList<object>> GetValues(string spreadsheetId, string range)
+        {
+            try
+            {
+                LogAction($"Getting values from range '{range}' in spreadsheet '{spreadsheetId}'...");
+
+                var service = GetSheetsService();
+                var request = service.Spreadsheets.Values.Get(spreadsheetId, range);
+                var response = request.Execute();
+                var values = response.Values; // Es IList<IList<object>>
+
+                if (values == null || values.Count == 0)
+                {
+                    LogAction("No data found in that range.");
+                    return null;
+                }
+
+                LogAction($"Successfully got {values.Count} rows of data.");
+                return values;
+            }
+            catch (Exception ex)
+            {
+                LogAction($"Error getting values from {range}: {ex.Message}");
+                throw;
             }
         }
     }
