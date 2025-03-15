@@ -26,7 +26,7 @@ namespace ADUserGroupManager
         private readonly string githubToken = "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";
 
         // URL del update.json
-        private readonly string updateUrl = "https://raw.githubusercontent.com/IltheshadowII/ADUserGroupManager/master/update.json";
+        private readonly string updateUrl = "https://raw.githubusercontent.com/IItheshadowII/ADUserGroupManager/master/update.json";
 
 
         public Form1()
@@ -65,18 +65,45 @@ namespace ADUserGroupManager
             });
         }
 
+        public static class LogService
+        {
+            private static readonly string logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "update_log.txt");
+
+            public static void Log(string message)
+            {
+                try
+                {
+                    string logMessage = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {message}";
+                    File.AppendAllText(logFilePath, logMessage + Environment.NewLine);
+                }
+                catch
+                {
+                    // En caso de error al escribir el log, no hacer nada para evitar bloqueos.
+                }
+            }
+        }
+
+
         private async Task CheckForUpdatesAsync()
         {
             try
             {
+                LogService.Log("Iniciando verificación de actualizaciones...");
+
                 Version currentVersion = Assembly.GetExecutingAssembly().GetName().Version;
+                LogService.Log($"Versión actual: {currentVersion}");
+
+                LogService.Log($"Descargando archivo de actualización desde: {updateUrl}");
                 string json = await DownloadFileWithAuthAsync(updateUrl, githubToken);
 
                 var updateInfo = JsonConvert.DeserializeObject<UpdateInfo>(json);
                 Version serverVersion = new Version(updateInfo.Version);
+                LogService.Log($"Versión disponible en el servidor: {serverVersion}");
 
                 if (serverVersion > currentVersion)
                 {
+                    LogService.Log("Nueva versión detectada.");
+
                     DialogResult result = MessageBox.Show(
                         $"Nueva versión disponible: {serverVersion}\n¿Deseas actualizar ahora?",
                         "Actualización",
@@ -86,18 +113,33 @@ namespace ADUserGroupManager
                     if (result == DialogResult.Yes)
                     {
                         string tempExePath = Path.Combine(Path.GetTempPath(), "ADUserGroupManager_new.exe");
+                        LogService.Log($"Descargando nueva versión al archivo temporal: {tempExePath}");
+
                         await DownloadFileWithAuthAsync(updateInfo.DownloadUrl, githubToken, tempExePath);
+                        LogService.Log("Descarga completada.");
 
                         string currentExePath = Application.ExecutablePath;
+                        LogService.Log($"Ruta del ejecutable actual: {currentExePath}");
+
+                        LogService.Log("Iniciando el proceso de actualización...");
                         Process.Start(currentExePath, $"/update \"{tempExePath}\"");
 
-                        // Cerrar la instancia actual
+                        LogService.Log("Cerrando la aplicación para aplicar la actualización...");
                         Application.Exit();
                     }
+                    else
+                    {
+                        LogService.Log("El usuario decidió no actualizar en este momento.");
+                    }
+                }
+                else
+                {
+                    LogService.Log("No se encontró una nueva versión disponible.");
                 }
             }
             catch (Exception ex)
             {
+                LogService.Log("Error durante la verificación de actualizaciones: " + ex.Message);
                 MessageBox.Show("Error al verificar actualizaciones: " + ex.Message,
                     "Error",
                     MessageBoxButtons.OK,
@@ -105,28 +147,40 @@ namespace ADUserGroupManager
             }
         }
 
-        private async Task<string> DownloadFileWithAuthAsync(string url, string token)
+        private async void checkForUpdatesMenuItem_Click(object sender, EventArgs e)
         {
-            using (var client = new HttpClient())
-            {
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("token", token);
-                return await client.GetStringAsync(url);
-            }
+            // Llamamos al método que ya tienes en tu código
+            await CheckForUpdatesAsync();
         }
 
-        private async Task DownloadFileWithAuthAsync(string url, string token, string destinationPath)
+
+
+        private async Task<string> DownloadFileWithAuthAsync(string url, string token, string destinationPath = null)
         {
             using (var client = new HttpClient())
             {
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("token", token);
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
                 var response = await client.GetAsync(url);
                 response.EnsureSuccessStatusCode();
-                using (var fs = new FileStream(destinationPath, FileMode.Create))
+
+                if (!string.IsNullOrEmpty(destinationPath))
                 {
-                    await response.Content.CopyToAsync(fs);
+                    // Guardar el archivo en el disco
+                    using (var fs = new FileStream(destinationPath, FileMode.Create))
+                    {
+                        await response.Content.CopyToAsync(fs);
+                    }
+                    return destinationPath;
+                }
+                else
+                {
+                    // Devolver el contenido como texto
+                    return await response.Content.ReadAsStringAsync();
                 }
             }
         }
+
 
         private void UpdateInterface(string message)
         {
@@ -717,11 +771,11 @@ Contraseña: {adminPassword}
         // Desde aca esta tomando el contenido de About
         private void aboutToolStripMenuItem_Click_1(object sender, EventArgs e)
         {
-            MessageBox.Show("Autor: Ezequiel Banega IA\nSoftware: Active Directory User Management\nDescripción: Este software es una herramienta de automatización para la creación de usuarios, grupos de OU y organización general, para uso interno.",
-                            "Acerca de",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Information);
+            // Mostrar la ventana personalizada de "Acerca de"
+            AboutForm aboutForm = new AboutForm();
+            aboutForm.ShowDialog();
         }
+
 
         private void configureEmailToolStripMenuItem_Click_1(object sender, EventArgs e)
         {

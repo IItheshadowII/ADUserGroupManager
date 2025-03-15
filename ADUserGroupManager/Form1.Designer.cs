@@ -73,6 +73,7 @@ namespace ADUserGroupManager
             this.userQueryToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.checkUpdateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.grpInputs.SuspendLayout();
             this.grpActions.SuspendLayout();
@@ -304,21 +305,22 @@ namespace ADUserGroupManager
             // cloudQueryToolStripMenuItem
             // 
             this.cloudQueryToolStripMenuItem.Name = "cloudQueryToolStripMenuItem";
-            this.cloudQueryToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.cloudQueryToolStripMenuItem.Size = new System.Drawing.Size(111, 22);
             this.cloudQueryToolStripMenuItem.Text = "Clouds";
             this.cloudQueryToolStripMenuItem.Click += new System.EventHandler(this.cloudQueryToolStripMenuItem_Click);
             // 
             // userQueryToolStripMenuItem
             // 
             this.userQueryToolStripMenuItem.Name = "userQueryToolStripMenuItem";
-            this.userQueryToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.userQueryToolStripMenuItem.Size = new System.Drawing.Size(111, 22);
             this.userQueryToolStripMenuItem.Text = "Users";
             this.userQueryToolStripMenuItem.Click += new System.EventHandler(this.userQueryToolStripMenuItem_Click);
             // 
             // helpToolStripMenuItem
             // 
             this.helpToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.aboutToolStripMenuItem});
+            this.aboutToolStripMenuItem,
+            this.checkUpdateToolStripMenuItem});
             this.helpToolStripMenuItem.Name = "helpToolStripMenuItem";
             this.helpToolStripMenuItem.Size = new System.Drawing.Size(44, 20);
             this.helpToolStripMenuItem.Text = "Help";
@@ -326,9 +328,16 @@ namespace ADUserGroupManager
             // aboutToolStripMenuItem
             // 
             this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
+            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.aboutToolStripMenuItem.Text = "About";
             this.aboutToolStripMenuItem.Click += new System.EventHandler(this.aboutToolStripMenuItem_Click_1);
+            // 
+            // checkUpdateToolStripMenuItem
+            // 
+            this.checkUpdateToolStripMenuItem.Name = "checkUpdateToolStripMenuItem";
+            this.checkUpdateToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.checkUpdateToolStripMenuItem.Text = "Check Update";
+            this.checkUpdateToolStripMenuItem.Click += new System.EventHandler(this.checkForUpdatesMenuItem_Click);
             // 
             // pictureBox1
             // 
@@ -381,5 +390,6 @@ namespace ADUserGroupManager
 
         private PictureBox pictureBox1;
         private CheckBox chkResetAdminPassword;
+        private ToolStripMenuItem checkUpdateToolStripMenuItem;
     }
 }
