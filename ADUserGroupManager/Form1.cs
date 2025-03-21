@@ -94,7 +94,7 @@ namespace ADUserGroupManager
                 LogService.Log($"Versión actual: {currentVersion}");
 
                 LogService.Log($"Descargando archivo de actualización desde: {updateUrl}");
-                string json = await DownloadFileWithAuthAsync(updateUrl, githubToken);
+                string json = await DownloadFileAsync(updateUrl);
 
                 var updateInfo = JsonConvert.DeserializeObject<UpdateInfo>(json);
                 Version serverVersion = new Version(updateInfo.Version);
@@ -115,7 +115,7 @@ namespace ADUserGroupManager
                         string tempExePath = Path.Combine(Path.GetTempPath(), "ADUserGroupManager_new.exe");
                         LogService.Log($"Descargando nueva versión al archivo temporal: {tempExePath}");
 
-                        await DownloadFileWithAuthAsync(updateInfo.DownloadUrl, githubToken, tempExePath);
+                        await DownloadFileAsync(updateInfo.DownloadUrl, tempExePath);
                         LogService.Log("Descarga completada.");
 
                         string currentExePath = Application.ExecutablePath;
@@ -135,6 +135,7 @@ namespace ADUserGroupManager
                 else
                 {
                     LogService.Log("No se encontró una nueva versión disponible.");
+                    MessageBox.Show($"Tu versión ({currentVersion}) está actualizada.", "Actualización", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
@@ -155,18 +156,18 @@ namespace ADUserGroupManager
 
 
 
-        private async Task<string> DownloadFileWithAuthAsync(string url, string token, string destinationPath = null)
+        private async Task<string> DownloadFileAsync(string url, string destinationPath = null)
         {
             using (var client = new HttpClient())
             {
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                // Importante: GitHub a veces bloquea si no hay User-Agent
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("ADUserGroupManager-Updater");
 
                 var response = await client.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
                 if (!string.IsNullOrEmpty(destinationPath))
                 {
-                    // Guardar el archivo en el disco
                     using (var fs = new FileStream(destinationPath, FileMode.Create))
                     {
                         await response.Content.CopyToAsync(fs);
@@ -175,11 +176,13 @@ namespace ADUserGroupManager
                 }
                 else
                 {
-                    // Devolver el contenido como texto
                     return await response.Content.ReadAsStringAsync();
                 }
             }
         }
+
+
+
 
 
         private void UpdateInterface(string message)
