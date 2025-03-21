@@ -1,0 +1,12 @@
+name: TestWorkflow
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Hello from GH Actions!"
