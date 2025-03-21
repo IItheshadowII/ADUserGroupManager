@@ -3,7 +3,7 @@ name: BuildAndRelease
 on:
   push:
     tags:
-      - 'v*'  
+      - 'v*'
 
 jobs:
   build:
@@ -13,6 +13,8 @@ jobs:
       # 1) Descarga tu código
       - name: Check out code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # ← Ajusta la indentación
 
       # 2) Instala GitVersion
       - name: Install GitVersion
@@ -24,8 +26,11 @@ jobs:
       - name: Determine version
         id: gitversion
         uses: gittools/actions/gitversion/execute@v0.9.14
-        
-          # ↑ Si tienes un archivo GitVersion.yml en la raíz de tu repo, ajusta 'true' para usarlo
+        with:
+          # Si tu GitVersion.yml está en la raíz, esto forzará a usarlo:
+          useConfigFile: true
+          # Si lo quieres forzar aún más, puedes especificar la ruta exacta:
+          # configFilePath: GitVersion.yml
 
       # 4) Actualiza el update.json con la nueva versión
       - name: Update update.json
