@@ -51,30 +51,57 @@ namespace ADUserGroupManager
         {
             try
             {
-                // Dar un tiempo para asegurarnos de que la primera instancia se haya cerrado
-                Thread.Sleep(2000);
-
-                // Ruta del ejecutable actual (esta segunda instancia se ejecuta en otro proceso)
+                // Ruta del ejecutable actual
                 string currentExePath = Application.ExecutablePath;
+                string currentProcessId = Process.GetCurrentProcess().Id.ToString();
 
-                // Copiar el nuevo .exe sobre el actual (sobrescritura habilitada con true)
-                File.Copy(newExePath, currentExePath, true);
+                // Crear un archivo batch para realizar la actualización después de que el proceso actual termine
+                string batchPath = Path.Combine(Path.GetTempPath(), "updateApp.bat");
 
-                // Borrar el .exe temporal
-                File.Delete(newExePath);
+                // Contenido del archivo batch
+                string batchContent = $@"
+@echo off
+echo Esperando a que el proceso original termine...
 
-                // Iniciar la nueva versión
-                Process.Start(currentExePath);
+:loop
+timeout /t 2 >nul
+tasklist /fi ""PID eq {currentProcessId}"" | find ""{currentProcessId}"" >nul
+if not errorlevel 1 goto loop
 
-                // Terminar este proceso
+echo Proceso terminado. Actualizando la aplicación...
+copy ""{newExePath}"" ""{currentExePath}"" /Y
+if errorlevel 1 goto error
+
+echo Eliminando archivo temporal...
+del ""{newExePath}""
+
+echo Iniciando la nueva versión de la aplicación...
+start """" ""{currentExePath}""
+goto end
+
+:error
+echo Error durante la actualización.
+pause
+
+:end
+del ""%~f0""
+";
+
+                // Escribir el archivo batch
+                File.WriteAllText(batchPath, batchContent);
+
+                // Ejecutar el archivo batch
+                Process.Start(batchPath);
+
+                // Terminar este proceso para permitir la actualización
                 Environment.Exit(0);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error durante la actualización: " + ex.Message,
-                                "Error",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Error);
+                MessageBox.Show("Error preparando la actualización: " + ex.Message,
+                              "Error",
+                              MessageBoxButtons.OK,
+                              MessageBoxIcon.Error);
                 Environment.Exit(1);
             }
         }
