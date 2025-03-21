@@ -61,7 +61,7 @@
             this.btnQuery.Name = "btnQuery";
             this.btnQuery.Size = new System.Drawing.Size(100, 30);
             this.btnQuery.TabIndex = 2;
-            this.btnQuery.Text = "Check";
+            this.btnQuery.Text = "Check ";
             this.btnQuery.UseVisualStyleBackColor = false;
             this.btnQuery.Click += new System.EventHandler(this.btnQuery_Click);
             // 
