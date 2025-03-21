@@ -3,7 +3,7 @@ name: BuildAndRelease
 on:
   push:
     tags:
-      - 'v*'  # Se disparará cuando subas un tag con formato "v1.2.3", "v1.4.0-beta", etc.
+      - 'v*'  
 
 jobs:
   build:
