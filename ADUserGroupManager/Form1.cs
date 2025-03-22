@@ -12,6 +12,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Net.Http.Headers;
 using System.Net.Http;
+using System.Dynamic;
 
 
 namespace ADUserGroupManager
@@ -84,69 +85,82 @@ namespace ADUserGroupManager
         }
 
 
+        // ...
+
         private async Task CheckForUpdatesAsync()
         {
             try
             {
-                LogService.Log("Iniciando verificación de actualizaciones...");
-
-                Version currentVersion = Assembly.GetExecutingAssembly().GetName().Version;
-                LogService.Log($"Versión actual: {currentVersion}");
-
-                LogService.Log($"Descargando archivo de actualización desde: {updateUrl}");
-                string json = await DownloadFileAsync(updateUrl);
-
-                var updateInfo = JsonConvert.DeserializeObject<UpdateInfo>(json);
-                Version serverVersion = new Version(updateInfo.Version);
-                LogService.Log($"Versión disponible en el servidor: {serverVersion}");
-
-                if (serverVersion > currentVersion)
+                using (var client = new HttpClient())
                 {
-                    LogService.Log("Nueva versión detectada.");
+                    // GitHub requiere definir un User-Agent
+                    client.DefaultRequestHeaders.Add("User-Agent", "ADUserGroupManager");
 
-                    DialogResult result = MessageBox.Show(
-                        $"Nueva versión disponible: {serverVersion}\n¿Deseas actualizar ahora?",
-                        "Actualización",
-                        MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Information);
+                    string apiUrl = "https://api.github.com/IItheshadowII/ADUserGroupManager/releases/latest";
+                    HttpResponseMessage response = await client.GetAsync(apiUrl);
+                    response.EnsureSuccessStatusCode();
+                    string json = await response.Content.ReadAsStringAsync();
 
-                    if (result == DialogResult.Yes)
+                    // Parsear la respuesta (usando Newtonsoft.Json o System.Text.Json)
+                    dynamic releaseInfo = JsonConvert.DeserializeObject<ExpandoObject>(json);
+                    string tag = releaseInfo.tag_name;  // Ejemplo: "v1.5.11" o mayor
+                    Version latestVersion = new Version(tag.TrimStart('v'));
+                    Version currentVersion = Assembly.GetExecutingAssembly().GetName().Version;
+
+                    if (latestVersion > currentVersion)
                     {
-                        string tempExePath = Path.Combine(Path.GetTempPath(), "ADUserGroupManager_new.exe");
-                        LogService.Log($"Descargando nueva versión al archivo temporal: {tempExePath}");
+                        // Buscar el asset del ejecutable
+                        string downloadUrl = null;
+                        foreach (var asset in releaseInfo.assets)
+                        {
+                            if (((string)asset.name).Equals("ADUserGroupManagerMerged.exe", StringComparison.OrdinalIgnoreCase))
+                            {
+                                downloadUrl = asset.browser_download_url;
+                                break;
+                            }
+                        }
 
-                        await DownloadFileAsync(updateInfo.DownloadUrl, tempExePath);
-                        LogService.Log("Descarga completada.");
+                        if (downloadUrl != null)
+                        {
+                            // Notificar al usuario
+                            DialogResult result = MessageBox.Show(
+                                "Nueva versión disponible: " + latestVersion + "\n¿Deseas actualizar ahora?",
+                                "Actualización",
+                                MessageBoxButtons.YesNo,
+                                MessageBoxIcon.Information);
 
-                        string currentExePath = Application.ExecutablePath;
-                        LogService.Log($"Ruta del ejecutable actual: {currentExePath}");
+                            if (result == DialogResult.Yes)
+                            {
+                                // Descargar el archivo al directorio temporal
+                                string tempExePath = Path.Combine(Path.GetTempPath(), "ADUserGroupManagerMerged.exe");
+                                using (var downloadClient = new WebClient())
+                                {
+                                    downloadClient.Headers.Add("User-Agent", "ADUserGroupManager");
+                                    await downloadClient.DownloadFileTaskAsync(downloadUrl, tempExePath);
+                                }
 
-                        LogService.Log("Iniciando el proceso de actualización...");
-                        Process.Start(currentExePath, $"/update \"{tempExePath}\"");
-
-                        LogService.Log("Cerrando la aplicación para aplicar la actualización...");
-                        Application.Exit();
+                                // Iniciar el proceso de actualización (pasando el ejecutable descargado)
+                                Process.Start(Application.ExecutablePath, "/update \"" + tempExePath + "\"");
+                                Application.Exit();
+                            }
+                        }
+                        else
+                        {
+                            MessageBox.Show("No se encontró el ejecutable en el release.", "Actualización", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        }
                     }
                     else
                     {
-                        LogService.Log("El usuario decidió no actualizar en este momento.");
+                        MessageBox.Show("Tu versión (" + currentVersion + ") está actualizada.", "Actualización", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
-                }
-                else
-                {
-                    LogService.Log("No se encontró una nueva versión disponible.");
-                    MessageBox.Show($"Tu versión ({currentVersion}) está actualizada.", "Actualización", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
             {
-                LogService.Log("Error durante la verificación de actualizaciones: " + ex.Message);
-                MessageBox.Show("Error al verificar actualizaciones: " + ex.Message,
-                    "Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
+                MessageBox.Show("Error al verificar actualizaciones: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
+
 
         private async void checkForUpdatesMenuItem_Click(object sender, EventArgs e)
         {
