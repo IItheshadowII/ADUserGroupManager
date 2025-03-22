@@ -44,21 +44,19 @@ jobs:
       - name: Update update.json
         shell: pwsh
         run: |
-          # Tomamos la versión SemVer de GitVersion
           $version = "${{ steps.gitversion.outputs.SemVer }}"
-
-          # Reemplaza la línea "version" en update.json
           (Get-Content update.json) |
-            ForEach-Object { $_ -replace '"version": ".*"', '"version": "' + $version + '"' } |
-            ForEach-Object { $_ -replace '"downloadUrl": ".*"', '"downloadUrl": "https://github.com/<TU_USUARIO>/<TU_REPO>/releases/download/v' + $version + '/ADUserGroupManager.exe"' } |
-            Set-Content update.json
+            ForEach-Object {
+              $_ -replace '"version"\s*:\s*".*"', '"version": "' + $version + '"' `
+                 -replace '"downloadUrl"\s*:\s*".*"', '"downloadUrl": "https://github.com/IltheshadowII/ADUserGroupManager/releases/download/v' + $version + '/ADUserGroupManager.exe"'
+            } | Set-Content update.json
 
-          # Configurar git para commitear
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add update.json
           git commit -m "Update update.json to version $version"
           git push origin HEAD
+
 
       # 5) Compilar el proyecto en modo Release
       - name: Build solution
