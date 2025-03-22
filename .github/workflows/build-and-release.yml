@@ -2,6 +2,8 @@ name: BuildAndRelease
 
 on:
   push:
+    branches:
+      - master
     tags:
       - 'v*'
 
