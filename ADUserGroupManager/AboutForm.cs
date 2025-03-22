@@ -17,7 +17,7 @@ namespace ADUserGroupManager
             string exePath = Assembly.GetExecutingAssembly().Location;
             var info = FileVersionInfo.GetVersionInfo(exePath);
 
-            // Toma solo lo que está antes del '+' (p.ej. "1.5.9")
+            // Toma solo lo que está antes del '+' (p.ej. "1.5.9")sxadfc
             string fullVersion = info.ProductVersion;
             string version = fullVersion?.Split('+')[0] ?? fullVersion;
 
