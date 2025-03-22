@@ -105,7 +105,7 @@
             // 
             // btnUnlockUser
             // 
-            this.btnUnlockUser.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.btnUnlockUser.BackColor = System.Drawing.Color.Red;
             this.btnUnlockUser.FlatAppearance.BorderSize = 0;
             this.btnUnlockUser.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnUnlockUser.ForeColor = System.Drawing.Color.White;
