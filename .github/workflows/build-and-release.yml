@@ -50,7 +50,8 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ steps.gitversion.outputs.SemVer }}"
-          $content = Get-Content update.json
+          $jsonPath = "ADUserGroupManager/update.json"
+          $content = Get-Content $jsonPath
           $updatedContent = @()
           foreach ($line in $content) {
             if ($line -match '"version"') {
@@ -63,7 +64,7 @@ jobs:
               $updatedContent += $line
             }
           }
-          $updatedContent | Set-Content update.json
+          $updatedContent | Set-Content $jsonPath
       - name: Create release
         if: startsWith(github.ref, 'refs/tags/')
         uses: ncipollo/release-action@v1
@@ -73,5 +74,5 @@ jobs:
           releaseName: "Release ${{ steps.gitversion.outputs.SemVer }}"
           draft: false
           prerelease: false
-          artifacts: "bin/Release/net48/ADUserGroupManager.exe,update.json"
+          artifacts: "bin/Release/net48/ADUserGroupManager.exe,ADUserGroupManager/update.json"
           artifactName: "ADUserGroupManager.exe"
