@@ -31,13 +31,14 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ steps.gitversion.outputs.SemVer }}"
-          (Get-Content update.json) |
-            ForEach-Object {
-              $_ = $_ -replace '"version"\s*:\s*".*"', '"version": "' + $version + '"'
-              $_ = $_ -replace '"downloadUrl"\s*:\s*".*"', '"downloadUrl": "https://github.com/IltheshadowII/ADUserGroupManager/releases/download/v' + $version + '/ADUserGroupManager.exe"'
-              $_
-            } |
-            Set-Content update.json
+          $content = Get-Content update.json
+          $updatedContent = $content | ForEach-Object {
+            $line = $_
+            $line = $line -replace '"version"\s*:\s*".*"', ('"version": "' + $version + '"')
+            $line = $line -replace '"downloadUrl"\s*:\s*".*"', ('"downloadUrl": "https://github.com/IltheshadowII/ADUserGroupManager/releases/download/v' + $version + '/ADUserGroupManager.exe"')
+            $line
+          }
+          $updatedContent | Set-Content update.json
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add update.json
