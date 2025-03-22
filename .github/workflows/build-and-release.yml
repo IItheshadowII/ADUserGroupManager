@@ -13,8 +13,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          persist-credentials: true
-          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Fetch all tags and commits
         run: |
           git fetch --prune --unshallow
@@ -28,29 +26,6 @@ jobs:
         uses: gittools/actions/gitversion/execute@v0.9.14
         with:
           useConfigFile: true
-      - name: Update update.json
-        shell: pwsh
-        run: |
-          $version = "${{ steps.gitversion.outputs.SemVer }}"
-          $content = Get-Content update.json
-          $updatedContent = @()
-          foreach ($line in $content) {
-            if ($line -match '"version"') {
-              $updatedContent += $line -replace '"version"\s*:\s*".*"', ('"version": "' + $version + '"')
-            }
-            elseif ($line -match '"downloadUrl"') {
-              $updatedContent += $line -replace '"downloadUrl"\s*:\s*".*"', ('"downloadUrl": "https://github.com/IItheshadowII/ADUserGroupManager/releases/download/v' + $version + '/ADUserGroupManager.exe"')
-            }
-            else {
-              $updatedContent += $line
-            }
-          }
-          $updatedContent | Set-Content update.json
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add update.json
-          git commit -m "Update update.json to version $version"
-          git push "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/IItheshadowII/ADUserGroupManager.git" HEAD:master
       - name: Add System.Resources.Extensions NuGet package
         run: |
           dotnet add ADUserGroupManager/ADUserGroupManager.csproj package System.Resources.Extensions
@@ -70,7 +45,27 @@ jobs:
           $csproj.Save($csprojPath)
       - name: Build solution
         run: dotnet build --configuration Release
+      - name: Update update.json for release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $version = "${{ steps.gitversion.outputs.SemVer }}"
+          $content = Get-Content update.json
+          $updatedContent = @()
+          foreach ($line in $content) {
+            if ($line -match '"version"') {
+              $updatedContent += $line -replace '"version"\s*:\s*".*"', ('"version": "' + $version + '"')
+            }
+            elseif ($line -match '"downloadUrl"') {
+              $updatedContent += $line -replace '"downloadUrl"\s*:\s*".*"', ('"downloadUrl": "https://github.com/IItheshadowII/ADUserGroupManager/releases/download/v' + $version + '/ADUserGroupManager.exe"')
+            }
+            else {
+              $updatedContent += $line
+            }
+          }
+          $updatedContent | Set-Content update.json
       - name: Create release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -78,5 +73,5 @@ jobs:
           releaseName: "Release ${{ steps.gitversion.outputs.SemVer }}"
           draft: false
           prerelease: false
-          artifacts: "bin/Release/net48/ADUserGroupManager.exe"
+          artifacts: "bin/Release/net48/ADUserGroupManager.exe,update.json"
           artifactName: "ADUserGroupManager.exe"
