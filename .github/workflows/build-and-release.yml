@@ -5,10 +5,6 @@ on:
       - master
     tags:
       - 'v*'
-
-permissions:
-  contents: write
-  
 jobs:
   build:
     runs-on: windows-latest
@@ -55,6 +51,23 @@ jobs:
           git add update.json
           git commit -m "Update update.json to version $version"
           git push "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/IItheshadowII/ADUserGroupManager.git" HEAD:master
+      - name: Add System.Resources.Extensions NuGet package
+        run: |
+          dotnet add ADUserGroupManager/ADUserGroupManager.csproj package System.Resources.Extensions
+      - name: Update .csproj file
+        shell: pwsh
+        run: |
+          $csprojPath = "ADUserGroupManager/ADUserGroupManager.csproj"
+          [xml]$csproj = Get-Content $csprojPath
+          
+          # Add the GenerateResourceUsePreserializedResources property
+          $propGroup = $csproj.CreateElement("PropertyGroup", $csproj.Project.xmlns)
+          $genResElement = $csproj.CreateElement("GenerateResourceUsePreserializedResources", $csproj.Project.xmlns)
+          $genResElement.InnerText = "true"
+          $propGroup.AppendChild($genResElement)
+          $csproj.Project.AppendChild($propGroup)
+          
+          $csproj.Save($csprojPath)
       - name: Build solution
         run: dotnet build --configuration Release
       - name: Create release
