@@ -9,14 +9,13 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest  # Necesitamos Windows para compilar .NET Framework 4.8
+    runs-on: windows-latest
 
     steps:
-      # 1) Descarga tu código
       - name: Check out code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # ← Ajusta la indentación
+          fetch-depth: 0
           persist-credentials: true
 
       - name: Fetch all tags and commits
@@ -24,33 +23,25 @@ jobs:
           git fetch --prune --unshallow
           git fetch --tags
 
-      # 2) Instala GitVersion
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v0.9.14
         with:
           versionSpec: '5.x'
 
-      # 3) Ejecuta GitVersion y guarda la versión en variables
       - name: Determine version
         id: gitversion
         uses: gittools/actions/gitversion/execute@v0.9.14
         with:
-          # Si tu GitVersion.yml está en la raíz, esto forzará a usarlo:
           useConfigFile: true
-          # Si lo quieres forzar aún más, puedes especificar la ruta exacta:
-          # configFilePath: GitVersion.yml
 
-      # 4) Actualiza el update.json con la nueva versión
       - name: Update update.json
         shell: pwsh
         run: |
           $version = "${{ steps.gitversion.outputs.SemVer }}"
-
           (Get-Content update.json) |
             ForEach-Object {
-              $_ `
-                -replace '"version"\s*:\s*".*"', '"version": "' + $version + '"' `
-                -replace '"downloadUrl"\s*:\s*".*"', '"downloadUrl": "https://github.com/IltheshadowII/ADUserGroupManager/releases/download/v' + $version + '/ADUserGroupManager.exe"'
+              $_ -replace '"version"\s*:\s*".*"', '"version": "' + $version + '"' `
+                 -replace '"downloadUrl"\s*:\s*".*"', '"downloadUrl": "https://github.com/IltheshadowII/ADUserGroupManager/releases/download/v' + $version + '/ADUserGroupManager.exe"'
             } |
             Set-Content update.json
 
@@ -60,12 +51,9 @@ jobs:
           git commit -m "Update update.json to version $version"
           git push origin HEAD
 
-
-      # 5) Compilar el proyecto en modo Release
       - name: Build solution
         run: dotnet build --configuration Release
 
-      # 6) Crear/actualizar release y subir el .exe como asset
       - name: Create release
         uses: ncipollo/release-action@v1
         with:
