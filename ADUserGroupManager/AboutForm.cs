@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Windows.Forms;
+using System.Reflection;
 
 namespace ADUserGroupManager
 {
@@ -13,8 +14,13 @@ namespace ADUserGroupManager
 
         private void AboutForm_Load(object sender, EventArgs e)
         {
-            // Obtener y mostrar la versión
-            string version = FileVersionInfo.GetVersionInfo(Application.ExecutablePath).FileVersion;
+            string exePath = Assembly.GetExecutingAssembly().Location;
+            var info = FileVersionInfo.GetVersionInfo(exePath);
+
+            // Toma solo lo que está antes del '+' (p.ej. "1.5.9")
+            string fullVersion = info.ProductVersion;
+            string version = fullVersion?.Split('+')[0] ?? fullVersion;
+
             lblVersion.Text = $"Versión: {version}";
         }
 

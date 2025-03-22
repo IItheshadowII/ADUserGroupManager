@@ -25,76 +25,76 @@
             this.lblVersion = new System.Windows.Forms.Label();
             this.lblDescription = new System.Windows.Forms.Label();
             this.btnClose = new System.Windows.Forms.Button();
-
             this.SuspendLayout();
-
             // 
             // lblTitle
             // 
             this.lblTitle.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
-            this.lblTitle.Location = new System.Drawing.Point(12, 9);
+            this.lblTitle.Location = new System.Drawing.Point(9, 6);
+            this.lblTitle.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Size = new System.Drawing.Size(460, 32);
+            this.lblTitle.Size = new System.Drawing.Size(345, 21);
             this.lblTitle.TabIndex = 0;
             this.lblTitle.Text = "Active Directory User Management";
             this.lblTitle.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-
             // 
             // lblAuthor
             // 
             this.lblAuthor.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.lblAuthor.Location = new System.Drawing.Point(12, 50);
+            this.lblAuthor.Location = new System.Drawing.Point(9, 32);
+            this.lblAuthor.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.lblAuthor.Name = "lblAuthor";
-            this.lblAuthor.Size = new System.Drawing.Size(460, 23);
+            this.lblAuthor.Size = new System.Drawing.Size(345, 29);
             this.lblAuthor.TabIndex = 1;
             this.lblAuthor.Text = "Autor: Ezequiel Banega IA";
             this.lblAuthor.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-
             // 
             // lblVersion
             // 
             this.lblVersion.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.lblVersion.Location = new System.Drawing.Point(12, 80);
+            this.lblVersion.Location = new System.Drawing.Point(9, 59);
+            this.lblVersion.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.lblVersion.Name = "lblVersion";
-            this.lblVersion.Size = new System.Drawing.Size(460, 23);
+            this.lblVersion.Size = new System.Drawing.Size(345, 27);
             this.lblVersion.TabIndex = 2;
             this.lblVersion.Text = "Versión: ";
             this.lblVersion.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-
             // 
             // lblDescription
             // 
             this.lblDescription.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.lblDescription.Location = new System.Drawing.Point(12, 110);
+            this.lblDescription.Location = new System.Drawing.Point(11, 88);
+            this.lblDescription.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.lblDescription.Name = "lblDescription";
-            this.lblDescription.Size = new System.Drawing.Size(460, 80);
+            this.lblDescription.Size = new System.Drawing.Size(345, 52);
             this.lblDescription.TabIndex = 3;
-            this.lblDescription.Text = "Descripción: Es un software de automatización para la creación de usuarios, OUs, grupos y organización en general para uso interno.";
+            this.lblDescription.Text = "Descripción: Es un software de automatización para la creación de usuarios, OUs, " +
+    "grupos y organización en general para uso interno.";
             this.lblDescription.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-
             // 
             // btnClose
             // 
-            this.btnClose.Location = new System.Drawing.Point(190, 200);
+            this.btnClose.Location = new System.Drawing.Point(144, 146);
+            this.btnClose.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.btnClose.Name = "btnClose";
-            this.btnClose.Size = new System.Drawing.Size(100, 35);
+            this.btnClose.Size = new System.Drawing.Size(75, 23);
             this.btnClose.TabIndex = 4;
             this.btnClose.Text = "Cerrar";
             this.btnClose.UseVisualStyleBackColor = true;
             this.btnClose.Click += new System.EventHandler(this.BtnClose_Click);
-
             // 
             // AboutForm
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(484, 270);
+            this.ClientSize = new System.Drawing.Size(387, 195);
             this.Controls.Add(this.lblTitle);
             this.Controls.Add(this.lblAuthor);
             this.Controls.Add(this.lblVersion);
             this.Controls.Add(this.lblDescription);
             this.Controls.Add(this.btnClose);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+            this.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "AboutForm";
@@ -102,6 +102,7 @@
             this.Text = "Acerca de";
             this.Load += new System.EventHandler(this.AboutForm_Load);
             this.ResumeLayout(false);
+
         }
 
     }

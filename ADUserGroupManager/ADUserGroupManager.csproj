@@ -1,20 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
   <PropertyGroup>
-    <!-- Apunta a .NET Framework 4.8 -->
+    <!-- Target .NET Framework 4.8 -->
     <TargetFramework>net48</TargetFramework>
-
-    <!-- Indica que es una app WinForms (o WPF). Cambia si tu proyecto usa WPF. -->
     <UseWindowsForms>true</UseWindowsForms>
-    <!-- <UseWPF>true</UseWPF> si fuese WPF -->
-
-    <!-- Opcional pero usual en Windows Forms -->
     <OutputType>WinExe</OutputType>
 
-    <!-- Estos son tus valores típicos de AssemblyName y RootNamespace -->
     <AssemblyName>ADUserGroupManager</AssemblyName>
     <RootNamespace>ADUserGroupManager</RootNamespace>
+
+    <!-- GitVersion genera todos los atributos de versión -->
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <AssemblyVersioningScheme>MajorMinorPatch</AssemblyVersioningScheme>
+
+    <!-- Evita que el SDK genere FileVersion e InformationalVersion duplicados -->
+    <GenerateAssemblyFileVersionAttribute>false</GenerateAssemblyFileVersionAttribute>
+    <GenerateAssemblyInformationalVersionAttribute>false</GenerateAssemblyInformationalVersionAttribute>
   </PropertyGroup>
+
   <ItemGroup>
+    <PackageReference Include="GitVersion.MsBuild" Version="5.*" PrivateAssets="All" />
     <PackageReference Include="Google.Apis" Version="1.69.0" />
     <PackageReference Include="Google.Apis.Auth" Version="1.69.0" />
     <PackageReference Include="Google.Apis.Core" Version="1.69.0" />
@@ -34,6 +38,7 @@
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.2" />
     <PackageReference Include="System.ValueTuple" Version="4.6.1" />
   </ItemGroup>
+
   <ItemGroup>
     <Reference Include="System.DirectoryServices" />
     <Reference Include="System.DirectoryServices.AccountManagement" />
