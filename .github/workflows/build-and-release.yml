@@ -45,11 +45,14 @@ jobs:
         shell: pwsh
         run: |
           $version = "${{ steps.gitversion.outputs.SemVer }}"
+
           (Get-Content update.json) |
             ForEach-Object {
-              $_ -replace '"version"\s*:\s*".*"', '"version": "' + $version + '"' `
-                 -replace '"downloadUrl"\s*:\s*".*"', '"downloadUrl": "https://github.com/IltheshadowII/ADUserGroupManager/releases/download/v' + $version + '/ADUserGroupManager.exe"'
-            } | Set-Content update.json
+              $_ `
+                -replace '"version"\s*:\s*".*"', '"version": "' + $version + '"' `
+                -replace '"downloadUrl"\s*:\s*".*"', '"downloadUrl": "https://github.com/IltheshadowII/ADUserGroupManager/releases/download/v' + $version + '/ADUserGroupManager.exe"'
+            } |
+            Set-Content update.json
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
