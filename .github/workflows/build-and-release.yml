@@ -1,59 +1,50 @@
 name: BuildAndRelease
-
 on:
   push:
     branches:
       - master
     tags:
       - 'v*'
-
 jobs:
   build:
     runs-on: windows-latest
-
     steps:
       - name: Check out code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
           persist-credentials: true
-
       - name: Fetch all tags and commits
         run: |
           git fetch --prune --unshallow
           git fetch --tags
-
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v0.9.14
         with:
           versionSpec: '5.x'
-
       - name: Determine version
         id: gitversion
         uses: gittools/actions/gitversion/execute@v0.9.14
         with:
           useConfigFile: true
-
       - name: Update update.json
         shell: pwsh
         run: |
           $version = "${{ steps.gitversion.outputs.SemVer }}"
           (Get-Content update.json) |
             ForEach-Object {
-              $_ -replace '"version"\s*:\s*".*"', '"version": "' + $version + '"' `
-                 -replace '"downloadUrl"\s*:\s*".*"', '"downloadUrl": "https://github.com/IltheshadowII/ADUserGroupManager/releases/download/v' + $version + '/ADUserGroupManager.exe"'
+              $_ = $_ -replace '"version"\s*:\s*".*"', '"version": "' + $version + '"'
+              $_ = $_ -replace '"downloadUrl"\s*:\s*".*"', '"downloadUrl": "https://github.com/IltheshadowII/ADUserGroupManager/releases/download/v' + $version + '/ADUserGroupManager.exe"'
+              $_
             } |
             Set-Content update.json
-
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add update.json
           git commit -m "Update update.json to version $version"
           git push origin HEAD
-
       - name: Build solution
         run: dotnet build --configuration Release
-
       - name: Create release
         uses: ncipollo/release-action@v1
         with:
