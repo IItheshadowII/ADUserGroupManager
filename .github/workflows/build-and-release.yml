@@ -1,4 +1,5 @@
 name: BuildAndRelease
+
 on:
   push:
     branches:
@@ -9,6 +10,7 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -20,8 +22,10 @@ jobs:
           git fetch --prune --unshallow
           git fetch --tags
 
-      - name: Setup GitVersion
+      - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v0.9.14
+        with:
+          versionSpec: '5.x'
 
       - name: Determine version
         id: gitversion
@@ -38,9 +42,11 @@ jobs:
         run: |
           $version = "${{ steps.gitversion.outputs.SemVer }}"
           $path = "ADUserGroupManager/update.json"
-          (Get-Content $path) -replace '"version"\s*:\s*".*"', '"version": "' + $version + '"' |
-                           ForEach-Object {$_ -replace '"downloadUrl"\s*:\s*".*"', '"downloadUrl": "https://github.com/IItheshadowII/ADUserGroupManager/releases/download/v' + $version + '/ADUserGroupManagerMerged.exe"'} |
-                           Set-Content $path
+          (Get-Content $path) `
+            -replace '"version"\s*:\s*".*"', '"version": "' + $version + '"' `
+            -replace '"downloadUrl"\s*:\s*".*"', '"downloadUrl": "https://github.com/IItheshadowII/ADUserGroupManager/releases/download/v' + $version + '/ADUserGroupManagerMerged.exe"' |
+            Set-Content $path
+
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add $path
