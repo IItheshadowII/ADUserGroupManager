@@ -1,1 +1,5 @@
 next-version: 1.5.0
+mode: Mainline
+branches:
+  main:
+    increment: patch
